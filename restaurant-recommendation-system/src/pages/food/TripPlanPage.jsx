@@ -124,8 +124,11 @@ export default function TripPlanPage({ session, token, handleLogout }) {
   if (!group || !session) return <div>로딩 중...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <HeaderBar session={session} handleLogout={handleLogout} />
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
+      {/* 헤더 */}
+      <header className="p-5 bg-indigo-100 border-b-3 border-indigo-300 rounded-b-2xl shadow-sm">
+        <HeaderBar session={session} handleLogout={handleLogout} />
+      </header>
 
       <main className="container mx-auto px-4 py-8">
         <div className="max-w-4xl mx-auto">
