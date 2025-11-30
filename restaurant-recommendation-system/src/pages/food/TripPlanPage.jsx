@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { GoogleMap, useJsApiLoader, Marker, Circle } from "@react-google-maps/api";
 import HeaderBar from "@common/bar/HeaderBar";
@@ -37,6 +37,13 @@ export default function TripPlanPage({ session, token, handleLogout }) {
   const [tripDays, setTripDays] = useState([]);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
 
+  const [map, setMap] = useState(null);
+  const onLoadMap = useCallback((mapInstance) => setMap(mapInstance), []);
+  const onUnmountMap = useCallback(() => setMap(null), []);
+
+  const circleRef = useRef(null);
+
+
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: API_KEY,
     libraries,
@@ -63,6 +70,50 @@ export default function TripPlanPage({ session, token, handleLogout }) {
     }
   }, [groupId, token, navigate]);
 
+  const currentDay = tripDays[activeDayIndex]; // Moved up for accessibility in useEffect
+
+  useEffect(() => {
+    if (!map || !window.google.maps) return; // Ensure map and Google Maps API are loaded
+
+    if (currentDay?.location) {
+      if (circleRef.current) {
+        // Update existing circle
+        circleRef.current.setCenter(currentDay.location);
+        circleRef.current.setRadius(currentDay.radius);
+        circleRef.current.setMap(map); // Ensure it's on the map
+      } else {
+        // Create new circle
+        const newCircle = new window.google.maps.Circle({
+          strokeColor: "#818cf8",
+          strokeOpacity: 0.8,
+          strokeWeight: 2,
+          fillColor: "#c7d2fe", // Original blue color
+          fillOpacity: 0.35,
+          clickable: false,
+          center: currentDay.location,
+          radius: currentDay.radius,
+          map: map,
+        });
+        circleRef.current = newCircle;
+      }
+    } else {
+      // Remove circle if no location
+      if (circleRef.current) {
+        circleRef.current.setMap(null);
+        circleRef.current = null;
+      }
+    }
+
+    // Cleanup function: remove circle when component unmounts or dependencies change
+    return () => {
+      if (circleRef.current) {
+        circleRef.current.setMap(null);
+        circleRef.current = null;
+      }
+    };
+  }, [map, currentDay]); // Dependencies: map instance and currentDay
+
+
   // 날짜 수 변경 시
   const handleNumDaysChange = (newNumDays) => {
     const num = Math.max(1, parseInt(newNumDays, 10) || 1);
@@ -81,7 +132,8 @@ export default function TripPlanPage({ session, token, handleLogout }) {
   const onMapClick = (e) => {
     const newLocation = { lat: e.latLng.lat(), lng: e.latLng.lng() };
     const newTripDays = [...tripDays];
-    newTripDays[activeDayIndex].location = newLocation;
+    // Create a NEW day object so currentDay's reference changes
+    newTripDays[activeDayIndex] = { ...newTripDays[activeDayIndex], location: newLocation };
     setTripDays(newTripDays);
   };
   
@@ -89,7 +141,8 @@ export default function TripPlanPage({ session, token, handleLogout }) {
   const handleRadiusChange = (newRadius) => {
     const radius = Math.max(100, parseInt(newRadius, 10));
     const newTripDays = [...tripDays];
-    newTripDays[activeDayIndex].radius = radius;
+    // Create a NEW day object so currentDay's reference changes
+    newTripDays[activeDayIndex] = { ...newTripDays[activeDayIndex], radius: radius };
     setTripDays(newTripDays);
   };
   
@@ -119,7 +172,6 @@ export default function TripPlanPage({ session, token, handleLogout }) {
     }
   };
   
-  const currentDay = tripDays[activeDayIndex];
 
   if (!group || !session) return <div>로딩 중...</div>;
 
@@ -178,22 +230,12 @@ export default function TripPlanPage({ session, token, handleLogout }) {
                         center={currentDay.location || defaultCenter}
                         zoom={13}
                         onClick={onMapClick}
+                        onLoad={onLoadMap}
+                        onUnmount={onUnmountMap}
                     >
                         {currentDay.location && (
                             <>
-                                <Marker position={currentDay.location} />
-                                <Circle 
-                                    key={`${currentDay.location.lat}-${currentDay.location.lng}`}
-                                    center={currentDay.location}
-                                    radius={currentDay.radius}
-                                    options={{
-                                        strokeColor: "#818cf8",
-                                        strokeOpacity: 0.8,
-                                        strokeWeight: 2,
-                                        fillColor: "#c7d2fe",
-                                        fillOpacity: 0.35,
-                                    }}
-                                />
+                                <Marker key={`marker-${currentDay.location.lat}-${currentDay.location.lng}`} position={currentDay.location} />
                             </>
                         )}
                     </GoogleMap>
