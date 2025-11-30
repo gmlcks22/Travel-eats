@@ -201,7 +201,7 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
                 <p className="text-xs text-gray-500 text-center mb-2">또는</p>
                 <h4 className="font-bold text-gray-700 text-center">다른 날짜 추천 받기</h4>
                 <div className="flex flex-col space-y-2 mt-2">
-                    {group.tripPlan.days.map((day, index) => (
+                    {Array.isArray(group.tripPlan.days) && group.tripPlan.days.map((day, index) => (
                         <Button
                             key={index}
                             variant="secondary"
@@ -219,7 +219,7 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
                   각 날짜의 계획에 맞춰 식당을 추천받으세요.
                 </p>
                 <div className="flex flex-col space-y-2">
-                    {group.tripPlan.days.map((day, index) => (
+                    {Array.isArray(group.tripPlan.days) && group.tripPlan.days.map((day, index) => (
                         <Button
                             key={index}
                             variant="primary"

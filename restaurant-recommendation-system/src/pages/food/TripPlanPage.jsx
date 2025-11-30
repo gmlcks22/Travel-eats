@@ -210,7 +210,7 @@ export default function TripPlanPage({ session, token, handleLogout }) {
                          <input
                             type="range"
                             min="100"
-                            max="5000"
+                            max="20000"
                             step="100"
                             value={currentDay.radius}
                             onChange={(e) => handleRadiusChange(e.target.value)}

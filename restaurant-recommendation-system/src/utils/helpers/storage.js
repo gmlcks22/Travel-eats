@@ -392,3 +392,38 @@ export function removeUserFromGroup(token, groupId, userIdToRemove) {
 
     return { success: true, message: "멤버를 그룹에서 내보냈습니다." };
 }
+
+/**
+ * 그룹에서 나갑니다. (일반 멤버만 가능)
+ * @param {string} token - 인증 토큰
+ * @param {string} groupId - 나갈 그룹 ID
+ * @returns {{success: boolean, message: string}}
+ */
+export function leaveGroup(token, groupId) {
+    const session = _validateSession(token);
+    if (!session) {
+        return { success: false, message: "인증 실패: 그룹에서 나가려면 로그인이 필요합니다." };
+    }
+
+    const groups = _getAllGroups();
+    const group = groups.find(g => g.id === groupId);
+
+    if (!group) {
+        return { success: false, message: "그룹을 찾을 수 없습니다." };
+    }
+
+    // 그룹 생성자는 나갈 수 없음 (삭제만 가능)
+    if (group.creatorId === session.user.id) {
+        return { success: false, message: "그룹 생성자는 그룹에서 나갈 수 없습니다. 대신 그룹 관리를 통해 그룹을 삭제해주세요." };
+    }
+
+    const memberIndex = group.members.indexOf(session.user.id);
+    if (memberIndex === -1) {
+        return { success: false, message: "당신은 이 그룹의 멤버가 아닙니다." };
+    }
+
+    group.members.splice(memberIndex, 1);
+    _setAllGroups(groups);
+
+    return { success: true, message: "그룹에서 나왔습니다." };
+}

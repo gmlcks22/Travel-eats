@@ -83,3 +83,54 @@ export const searchPlacesByLocation = async ({ location, radius, keyword }) => {
     return { success: false, places: [], message: "네트워크 오류로 인해 주변 장소를 검색할 수 없습니다." };
   }
 };
+
+
+/**
+ * Google Places API 'Place Details'를 사용하여 특정 장소의 상세 정보를 가져옵니다.
+ * @param {string} placeId - 조회할 장소의 place_id
+ * @returns {Promise<{success: boolean, details: object|null, message: string}>}
+ */
+export const getPlaceDetails = async (placeId) => {
+  if (!API_KEY || API_KEY === "YOUR_API_KEY") {
+    console.error("Google Places API 키가 설정되지 않았습니다. `.env.local` 파일을 생성하고 `VITE_GOOGLE_PLACES_API_KEY`를 설정해주세요.");
+    // 개발 편의를 위해 상세 정보 모의(mock) 데이터를 반환합니다.
+    return Promise.resolve({
+      success: true,
+      details: {
+        reviews: [
+          { author_name: "모의 사용자 1", rating: 5, text: "정말 최고의 경험이었습니다! (모의 리뷰)", relative_time_description: "2주 전" },
+          { author_name: "모의 사용자 2", rating: 4, text: "음식이 맛있고 분위기가 좋네요. (모의 리뷰)", relative_time_description: "1달 전" },
+        ],
+        opening_hours: {
+            weekday_text: [
+                "월요일: 오전 9:00 – 오후 10:00",
+                "화요일: 오전 9:00 – 오후 10:00",
+                "수요일: 오전 9:00 – 오후 10:00",
+                "목요일: 오전 9:00 – 오후 10:00",
+                "금요일: 오전 9:00 – 오후 11:00",
+                "토요일: 오전 10:00 – 오후 11:00",
+                "일요일: 오전 10:00 – 오후 9:00"
+            ]
+        },
+        website: "https://example.com",
+        formatted_phone_number: "02-1234-5678"
+      },
+      message: "API 키가 없어 상세 정보 모의 데이터를 반환합니다."
+    });
+  }
+  
+  const fields = "name,rating,user_ratings_total,reviews,opening_hours,website,formatted_phone_number";
+  const url = `/maps/api/place/details/json?place_id=${placeId}&fields=${fields}&key=${API_KEY}&language=ko`;
+
+  try {
+    const response = await fetch(url);
+    const data = await response.json();
+    if (data.status === "OK") {
+      return { success: true, details: data.result, message: "장소 상세 정보 검색에 성공했습니다." };
+    }
+    return { success: false, details: null, message: `API 오류: ${data.status} - ${data.error_message || "알 수 없는 오류"}` };
+  } catch (error) {
+    console.error("Google Place Details API 호출 중 네트워크 오류 발생:", error);
+    return { success: false, details: null, message: "네트워크 오류로 인해 상세 정보를 검색할 수 없습니다." };
+  }
+};

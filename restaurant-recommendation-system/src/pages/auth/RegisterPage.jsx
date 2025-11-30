@@ -4,15 +4,15 @@ import HeaderBar from "@common/bar/HeaderBar";
 import Button from "@common/button/Button";
 import { Input } from "@components/common/Input";
 import routes from "@utils/constants/routes";
-import { registerUser } from "@utils/helpers/storage";
+import { registerUser, loginUser } from "@utils/helpers/storage";
 import { UserPlus } from "lucide-react";
 
 /**
  * 회원가입 페이지
  * - 아이디, 비밀번호, 닉네임 입력
- * - 회원가입 성공 시 로그인 페이지로 이동
+ * - 회원가입 성공 시 자동 로그인 후 온보딩 선호도 설정으로 이동
  */
-export default function RegisterPage() {
+export default function RegisterPage({ onLoginSuccess }) {
   const navigate = useNavigate();
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
@@ -43,15 +43,25 @@ export default function RegisterPage() {
       return;
     }
 
-    // 회원가입 시도 (storage.js의 새 함수 사용)
-    const result = registerUser(userId, password, nickname);
+    // 1. 회원가입 시도
+    const registerResult = registerUser(userId, password, nickname);
     
-    if (result.success) {
-      alert(result.message + "\n로그인 페이지로 이동합니다.");
-      // 회원가입 후 자동 로그인 대신 로그인 페이지로 이동
-      navigate(routes.login);
+    if (registerResult.success) {
+      // 2. 가입 성공 시 자동 로그인
+      const loginResult = loginUser(userId, password);
+      if (loginResult.success) {
+        alert(`${loginResult.session.user.nickname}님, 환영합니다!\n먼저 음식 취향을 알려주시겠어요? (나중에 변경 가능)`);
+        // 3. App의 세션 상태 업데이트
+        onLoginSuccess(loginResult.session);
+        // 4. 온보딩 선호도 설정 페이지로 이동
+        navigate(routes.onboardingPreference, { replace: true });
+      } else {
+        // 이 경우는 거의 없지만, 만약을 대비한 처리
+        setError(loginResult.message);
+        navigate(routes.login);
+      }
     } else {
-      setError(result.message);
+      setError(registerResult.message);
     }
   };
 

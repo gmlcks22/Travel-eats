@@ -83,7 +83,7 @@ function App() {
         />
         <Route 
           path={routes.register} 
-          element={session ? <Navigate to={routes.home} replace /> : <RegisterPage />} 
+          element={session ? <Navigate to={routes.home} replace /> : <RegisterPage onLoginSuccess={handleLoginSuccess} />} 
         />
         
         {/* 
@@ -114,7 +114,11 @@ function App() {
           element={<ProtectedRoute session={session}><TripPlanPage {...commonPageProps} /></ProtectedRoute>} 
         />
         <Route 
-          path={routes.foodPreference} 
+          path={routes.groupFoodPreference} 
+          element={<ProtectedRoute session={session}><FoodPreferencePage {...commonPageProps} /></ProtectedRoute>} 
+        />
+        <Route 
+          path={routes.onboardingPreference} 
           element={<ProtectedRoute session={session}><FoodPreferencePage {...commonPageProps} /></ProtectedRoute>} 
         />
         <Route 
