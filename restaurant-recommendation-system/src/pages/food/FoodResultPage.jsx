@@ -17,19 +17,26 @@ import { Trophy, Filter, MapPin, Star, TrendingUp } from "lucide-react";
 export default function FoodResultPage() {
   const navigate = useNavigate();
   const { groupId } = useParams();
-  const currentUser = getCurrentUser();
+  const [currentUser, setCurrentUser] = useState(null);
   const [group, setGroup] = useState(null);
   const [restaurants, setRestaurants] = useState([]);
   const [filteredRestaurants, setFilteredRestaurants] = useState([]);
   const [filterScore, setFilterScore] = useState(0);
 
-  // 로그인 및 그룹 체크
+  // 로그인 체크 - 마운트 시 한 번만
   useEffect(() => {
-    if (!currentUser) {
+    const user = getCurrentUser();
+    if (!user) {
       alert("로그인이 필요합니다.");
       navigate(routes.login);
       return;
     }
+    setCurrentUser(user);
+  }, [navigate]);
+
+  // 그룹 정보 및 식당 목록 로드
+  useEffect(() => {
+    if (!currentUser || !groupId) return;
 
     const groupData = getGroupById(groupId);
     if (!groupData) {
@@ -47,7 +54,7 @@ export default function FoodResultPage() {
     setGroup(groupData);
     setRestaurants(groupData.restaurants);
     setFilteredRestaurants(groupData.restaurants);
-  }, [groupId, currentUser, navigate]);
+  }, [currentUser, groupId, navigate]);
 
   // 필터링 처리
   useEffect(() => {
@@ -69,8 +76,12 @@ export default function FoodResultPage() {
     );
   };
 
-  if (!group) {
-    return <div className="min-h-screen flex items-center justify-center">로딩 중...</div>;
+  if (!currentUser || !group) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600">로딩 중...</p>
+      </div>
+    );
   }
 
   const topRestaurant = filteredRestaurants[0];

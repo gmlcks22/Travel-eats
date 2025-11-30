@@ -16,19 +16,26 @@ import { MapPin, Star, DollarSign, Users, ThumbsUp, ThumbsDown } from "lucide-re
 export default function FoodDetailPage() {
   const navigate = useNavigate();
   const { groupId, restaurantId } = useParams();
-  const currentUser = getCurrentUser();
+  const [currentUser, setCurrentUser] = useState(null);
   const [group, setGroup] = useState(null);
   const [restaurant, setRestaurant] = useState(null);
   const [members, setMembers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // 데이터 로드
+  // 통합된 데이터 로드
   useEffect(() => {
-    if (!currentUser) {
+    const user = getCurrentUser();
+    
+    // 로그인 체크
+    if (!user) {
       alert("로그인이 필요합니다.");
       navigate(routes.login);
       return;
     }
 
+    setCurrentUser(user);
+
+    // 그룹 체크
     const groupData = getGroupById(groupId);
     if (!groupData) {
       alert("존재하지 않는 그룹입니다.");
@@ -36,6 +43,7 @@ export default function FoodDetailPage() {
       return;
     }
 
+    // 식당 데이터 체크
     const restaurantData = groupData.restaurants?.find(r => r.id === restaurantId);
     if (!restaurantData) {
       alert("식당 정보를 찾을 수 없습니다.");
@@ -52,10 +60,16 @@ export default function FoodDetailPage() {
       allUsers.find(u => u.id === memberId)
     ).filter(Boolean);
     setMembers(memberData);
-  }, [groupId, restaurantId, currentUser, navigate]);
+    
+    setIsLoading(false);
+  }, [groupId, restaurantId, navigate]);
 
-  if (!restaurant || !group) {
-    return <div className="min-h-screen flex items-center justify-center">로딩 중...</div>;
+  if (isLoading || !restaurant || !group) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600">로딩 중...</p>
+      </div>
+    );
   }
 
   const { consensus } = restaurant;

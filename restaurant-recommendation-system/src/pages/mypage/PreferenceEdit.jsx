@@ -6,12 +6,10 @@ import { CheckboxGroup, RangeInput } from "@components/common/Input";
 import routes from "@utils/constants/routes";
 import { getCurrentUser, updateUser } from "@utils/helpers/storage";
 import { FOOD_CATEGORIES, FOOD_KEYWORDS } from "@utils/helpers/foodRecommendation";
-import { Heart, ThumbsDown, X } from "lucide-react";
+import { Heart, ThumbsDown, X, AlertCircle } from "lucide-react";
 
 /**
- * 선호도 수정 페이지 (마이페이지 전용)
- * - 그룹과 무관하게 개인 선호도만 수정
- * - FoodPreferencePage와 유사하지만 그룹 컨텍스트 없음
+ * 선호도 수정 페이지 (마이페이지 전용) - 중복 검사 기능 추가
  */
 export default function PreferenceEditPage() {
   const navigate = useNavigate();
@@ -23,9 +21,18 @@ export default function PreferenceEditPage() {
   const [cannotEat, setCannotEat] = useState([]);
   const [dislikedKeywords, setDislikedKeywords] = useState([]);
   const [likedKeywords, setLikedKeywords] = useState([]);
-  const [budgetRange, setBudgetRange] = useState([10000, 50000]);
+  const [budgetRange, setBudgetRange] = useState([0, 50000]);
 
-  // 로그인 체크 - 마운트 시 한 번만
+  // 충돌 메시지 state - 각 섹션별로 분리
+  const [conflicts, setConflicts] = useState({
+    likedCategories: null,
+    dislikedCategories: null,
+    cannotEat: null,
+    dislikedKeywords: null,
+    likedKeywords: null,
+  });
+
+  // 로그인 체크
   useEffect(() => {
     const user = getCurrentUser();
     if (!user) {
@@ -36,11 +43,10 @@ export default function PreferenceEditPage() {
     setCurrentUser(user);
   }, [navigate]);
 
-  // 사용자 정보 로드 - currentUser가 설정되면 실행
+  // 사용자 정보 로드
   useEffect(() => {
     if (!currentUser) return;
 
-    // 기존 선호도가 있으면 불러오기
     if (currentUser.preference) {
       const pref = currentUser.preference;
       setLikedCategories(pref.likedCategories || []);
@@ -48,9 +54,126 @@ export default function PreferenceEditPage() {
       setCannotEat(pref.cannotEat || []);
       setDislikedKeywords(pref.dislikedKeywords || []);
       setLikedKeywords(pref.likedKeywords || []);
-      setBudgetRange(pref.budgetRange || [10000, 50000]);
+      setBudgetRange(pref.budgetRange || [0, 50000]);
     }
   }, [currentUser]);
+
+  // 충돌 검사 함수
+  const checkConflicts = (type, value, newArray) => {
+    let conflictMessage = null;
+
+    if (type === 'liked') {
+      if (dislikedCategories.includes(value)) {
+        conflictMessage = `"${value}"은(는) 이미 선호하지 않는 음식으로 선택되어 있습니다.`;
+      }
+    } else if (type === 'disliked') {
+      if (likedCategories.includes(value)) {
+        conflictMessage = `"${value}"은(는) 이미 좋아하는 음식으로 선택되어 있습니다.`;
+      }
+    } else if (type === 'likedKeyword') {
+      if (dislikedKeywords.includes(value)) {
+        conflictMessage = `"${value}"은(는) 이미 피하고 싶은 맛/재료로 선택되어 있습니다.`;
+      } else if (cannotEat.includes(value)) {
+        conflictMessage = `"${value}"은(는) 이미 못 먹는 음식으로 선택되어 있습니다.`;
+      }
+    } else if (type === 'dislikedKeyword') {
+      if (likedKeywords.includes(value)) {
+        conflictMessage = `"${value}"은(는) 이미 선호하는 맛/재료로 선택되어 있습니다.`;
+      } else if (cannotEat.includes(value)) {
+        conflictMessage = `"${value}"은(는) 이미 못 먹는 음식으로 선택되어 있습니다.`;
+      }
+    } else if (type === 'cannotEat') {
+      if (likedKeywords.includes(value)) {
+        conflictMessage = `"${value}"은(는) 이미 선호하는 맛/재료로 선택되어 있습니다.`;
+      } else if (dislikedKeywords.includes(value)) {
+        conflictMessage = `"${value}"은(는) 이미 피하고 싶은 맛/재료로 선택되어 있습니다.`;
+      }
+    }
+
+    return conflictMessage;
+  };
+
+  // 카테고리 선택 핸들러 (충돌 검사 포함)
+  const handleLikedCategoriesChange = (newValue) => {
+    const addedItem = newValue.find(item => !likedCategories.includes(item));
+    
+    if (addedItem) {
+      const conflict = checkConflicts('liked', addedItem, newValue);
+      if (conflict) {
+        setConflicts(prev => ({ ...prev, likedCategories: conflict }));
+        setTimeout(() => setConflicts(prev => ({ ...prev, likedCategories: null })), 3000);
+        return;
+      }
+    }
+    
+    setLikedCategories(newValue);
+    setConflicts(prev => ({ ...prev, likedCategories: null }));
+  };
+
+  const handleDislikedCategoriesChange = (newValue) => {
+    const addedItem = newValue.find(item => !dislikedCategories.includes(item));
+    
+    if (addedItem) {
+      const conflict = checkConflicts('disliked', addedItem, newValue);
+      if (conflict) {
+        setConflicts(prev => ({ ...prev, dislikedCategories: conflict }));
+        setTimeout(() => setConflicts(prev => ({ ...prev, dislikedCategories: null })), 3000);
+        return;
+      }
+    }
+    
+    setDislikedCategories(newValue);
+    setConflicts(prev => ({ ...prev, dislikedCategories: null }));
+  };
+
+  // 키워드 선택 핸들러 (충돌 검사 포함)
+  const handleLikedKeywordsChange = (newValue) => {
+    const addedItem = newValue.find(item => !likedKeywords.includes(item));
+    
+    if (addedItem) {
+      const conflict = checkConflicts('likedKeyword', addedItem, newValue);
+      if (conflict) {
+        setConflicts(prev => ({ ...prev, likedKeywords: conflict }));
+        setTimeout(() => setConflicts(prev => ({ ...prev, likedKeywords: null })), 3000);
+        return;
+      }
+    }
+    
+    setLikedKeywords(newValue);
+    setConflicts(prev => ({ ...prev, likedKeywords: null }));
+  };
+
+  const handleDislikedKeywordsChange = (newValue) => {
+    const addedItem = newValue.find(item => !dislikedKeywords.includes(item));
+    
+    if (addedItem) {
+      const conflict = checkConflicts('dislikedKeyword', addedItem, newValue);
+      if (conflict) {
+        setConflicts(prev => ({ ...prev, dislikedKeywords: conflict }));
+        setTimeout(() => setConflicts(prev => ({ ...prev, dislikedKeywords: null })), 3000);
+        return;
+      }
+    }
+    
+    setDislikedKeywords(newValue);
+    setConflicts(prev => ({ ...prev, dislikedKeywords: null }));
+  };
+
+  const handleCannotEatChange = (newValue) => {
+    const addedItem = newValue.find(item => !cannotEat.includes(item));
+    
+    if (addedItem) {
+      const conflict = checkConflicts('cannotEat', addedItem, newValue);
+      if (conflict) {
+        setConflicts(prev => ({ ...prev, cannotEat: conflict }));
+        setTimeout(() => setConflicts(prev => ({ ...prev, cannotEat: null })), 3000);
+        return;
+      }
+    }
+    
+    setCannotEat(newValue);
+    setConflicts(prev => ({ ...prev, cannotEat: null }));
+  };
 
   // 선호도 저장
   const handleSavePreference = (e) => {
@@ -121,10 +244,19 @@ export default function PreferenceEditPage() {
                     좋아하는 음식 종류
                   </h2>
                 </div>
+                
+                {/* 충돌 메시지 - 좋아하는 음식 */}
+                {conflicts.likedCategories && (
+                  <div className="mb-4 p-3 bg-red-50 border-2 border-red-300 rounded-lg flex items-start gap-2 animate-shake">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-800 font-medium">{conflicts.likedCategories}</p>
+                  </div>
+                )}
+                
                 <CheckboxGroup
                   options={categories}
                   selected={likedCategories}
-                  onChange={setLikedCategories}
+                  onChange={handleLikedCategoriesChange}
                 />
               </div>
 
@@ -136,10 +268,19 @@ export default function PreferenceEditPage() {
                     선호하지 않는 음식 종류
                   </h2>
                 </div>
+                
+                {/* 충돌 메시지 - 선호하지 않는 음식 */}
+                {conflicts.dislikedCategories && (
+                  <div className="mb-4 p-3 bg-red-50 border-2 border-red-300 rounded-lg flex items-start gap-2 animate-shake">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-800 font-medium">{conflicts.dislikedCategories}</p>
+                  </div>
+                )}
+                
                 <CheckboxGroup
                   options={categories}
                   selected={dislikedCategories}
-                  onChange={setDislikedCategories}
+                  onChange={handleDislikedCategoriesChange}
                 />
               </div>
 
@@ -151,10 +292,19 @@ export default function PreferenceEditPage() {
                     못 먹는 음식 (알레르기, 금기 등)
                   </h2>
                 </div>
+                
+                {/* 충돌 메시지 - 못 먹는 음식 */}
+                {conflicts.cannotEat && (
+                  <div className="mb-4 p-3 bg-red-100 border-2 border-red-400 rounded-lg flex items-start gap-2 animate-shake">
+                    <AlertCircle className="w-5 h-5 text-red-700 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-900 font-medium">{conflicts.cannotEat}</p>
+                  </div>
+                )}
+                
                 <CheckboxGroup
                   options={keywords}
                   selected={cannotEat}
-                  onChange={setCannotEat}
+                  onChange={handleCannotEatChange}
                 />
                 <p className="text-sm text-red-600 mt-3">
                   ⚠️ 이 항목은 추천에서 완전히 제외됩니다
@@ -166,10 +316,19 @@ export default function PreferenceEditPage() {
                 <h2 className="text-xl font-bold text-gray-800 mb-4">
                   피하고 싶은 맛/재료
                 </h2>
+                
+                {/* 충돌 메시지 - 피하고 싶은 맛/재료 */}
+                {conflicts.dislikedKeywords && (
+                  <div className="mb-4 p-3 bg-red-50 border-2 border-red-300 rounded-lg flex items-start gap-2 animate-shake">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-800 font-medium">{conflicts.dislikedKeywords}</p>
+                  </div>
+                )}
+                
                 <CheckboxGroup
                   options={keywords}
                   selected={dislikedKeywords}
-                  onChange={setDislikedKeywords}
+                  onChange={handleDislikedKeywordsChange}
                 />
               </div>
 
@@ -178,10 +337,19 @@ export default function PreferenceEditPage() {
                 <h2 className="text-xl font-bold text-gray-800 mb-4">
                   선호하는 맛/재료
                 </h2>
+                
+                {/* 충돌 메시지 - 선호하는 맛/재료 */}
+                {conflicts.likedKeywords && (
+                  <div className="mb-4 p-3 bg-red-50 border-2 border-red-300 rounded-lg flex items-start gap-2 animate-shake">
+                    <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-800 font-medium">{conflicts.likedKeywords}</p>
+                  </div>
+                )}
+                
                 <CheckboxGroup
                   options={keywords}
                   selected={likedKeywords}
-                  onChange={setLikedKeywords}
+                  onChange={handleLikedKeywordsChange}
                 />
               </div>
 
@@ -189,7 +357,7 @@ export default function PreferenceEditPage() {
               <div className="p-6 bg-indigo-50 rounded-lg border-2 border-indigo-200">
                 <RangeInput
                   label="💰 선호하는 가격대 (1인 평균)"
-                  min={5000}
+                  min={0}
                   max={100000}
                   value={budgetRange}
                   onChange={setBudgetRange}
@@ -207,6 +375,8 @@ export default function PreferenceEditPage() {
                   • 못 먹는 음식이 있는 경우 반드시 체크해주세요!
                   <br />
                   • 선호도를 상세히 입력할수록 더 정확한 추천을 받을 수 있습니다
+                  <br />
+                  • 중복된 항목은 자동으로 방지됩니다
                 </p>
               </div>
 
@@ -234,6 +404,18 @@ export default function PreferenceEditPage() {
           </div>
         </div>
       </main>
+
+      {/* 애니메이션을 위한 스타일 */}
+      <style>{`
+        @keyframes shake {
+          0%, 100% { transform: translateX(0); }
+          25% { transform: translateX(-10px); }
+          75% { transform: translateX(10px); }
+        }
+        .animate-shake {
+          animation: shake 0.5s ease-in-out;
+        }
+      `}</style>
     </div>
   );
 }
