@@ -321,3 +321,74 @@ export function updateGroup(token, groupId, updates) {
 
   return { success: true, group: groups[index], message: "그룹 정보가 업데이트되었습니다." };
 }
+
+/**
+ * 그룹을 삭제합니다. (그룹 생성자만 가능)
+ * @param {string} token - 인증 토큰
+ * @param {string} groupId - 삭제할 그룹 ID
+ * @returns {{success: boolean, message: string}}
+ */
+export function deleteGroup(token, groupId) {
+  const session = _validateSession(token);
+  if (!session) {
+    return { success: false, message: "인증 실패: 그룹을 삭제하려면 로그인이 필요합니다." };
+  }
+
+  const groups = _getAllGroups();
+  const index = groups.findIndex(g => g.id === groupId);
+
+  if (index === -1) {
+    return { success: false, message: "그룹을 찾을 수 없습니다." };
+  }
+
+  // 권한 확인: 요청한 사용자가 그룹 생성자인지 확인
+  if (groups[index].creatorId !== session.user.id) {
+    return { success: false, message: "권한 없음: 그룹 생성자만 삭제할 수 있습니다." };
+  }
+
+  const filteredGroups = groups.filter(g => g.id !== groupId);
+  _setAllGroups(filteredGroups);
+
+  return { success: true, message: "그룹이 삭제되었습니다." };
+}
+
+/**
+ * 그룹에서 멤버를 내보냅니다. (그룹 생성자만 가능)
+ * @param {string} token - 인증 토큰
+ * @param {string} groupId - 그룹 ID
+ * @param {string} userIdToRemove - 내보낼 사용자의 ID
+ * @returns {{success: boolean, message: string}}
+ */
+export function removeUserFromGroup(token, groupId, userIdToRemove) {
+    const session = _validateSession(token);
+    if (!session) {
+        return { success: false, message: "인증 실패: 멤버를 내보내려면 로그인이 필요합니다." };
+    }
+
+    const groups = _getAllGroups();
+    const group = groups.find(g => g.id === groupId);
+
+    if (!group) {
+        return { success: false, message: "그룹을 찾을 수 없습니다." };
+    }
+
+    // 권한 확인: 요청한 사용자가 그룹 생성자인지 확인
+    if (group.creatorId !== session.user.id) {
+        return { success: false, message: "권한 없음: 그룹 생성자만 멤버를 내보낼 수 있습니다." };
+    }
+    
+    // 생성자 자신은 내보낼 수 없음
+    if (userIdToRemove === session.user.id) {
+        return { success: false, message: "자기 자신을 내보낼 수 없습니다." };
+    }
+
+    const memberIndex = group.members.indexOf(userIdToRemove);
+    if (memberIndex === -1) {
+        return { success: false, message: "해당 사용자는 그룹 멤버가 아닙니다." };
+    }
+
+    group.members.splice(memberIndex, 1);
+    _setAllGroups(groups);
+
+    return { success: true, message: "멤버를 그룹에서 내보냈습니다." };
+}

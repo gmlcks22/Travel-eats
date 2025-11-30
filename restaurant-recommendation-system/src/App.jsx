@@ -10,12 +10,15 @@ import RegisterPage from "@pages/auth/RegisterPage";
 import GroupCreatePage from "@pages/group/GroupCreatePage";
 import GroupJoinPage from "@pages/group/GroupJoinPage";
 import GroupDetailPage from "@pages/group/GroupDetailPage";
+import GroupManagePage from "@pages/group/GroupManagePage";
 import TripPlanPage from "@pages/food/TripPlanPage";
 import FoodPreferencePage from "@pages/food/FoodPreferencePage";
 import LoadingPage from "@pages/food/LoadingPage";
 import FoodResultPage from "@pages/food/FoodResultPage";
 import FoodDetailPage from "@pages/food/FoodDetailPage";
 import MyPage from "@pages/mypage/MyPage";
+import MyGroupsPage from "@pages/mypage/MyGroupsPage";
+import MyPageEdit from "@pages/mypage/MyPageEdit";
 
 /**
  * ProtectedRoute 컴포넌트
@@ -103,6 +106,10 @@ function App() {
           element={<ProtectedRoute session={session}><GroupDetailPage {...commonPageProps} /></ProtectedRoute>} 
         />
         <Route 
+          path={routes.groupManage} 
+          element={<ProtectedRoute session={session}><GroupManagePage {...commonPageProps} /></ProtectedRoute>} 
+        />
+        <Route 
           path={routes.tripPlan} 
           element={<ProtectedRoute session={session}><TripPlanPage {...commonPageProps} /></ProtectedRoute>} 
         />
@@ -125,6 +132,14 @@ function App() {
         <Route 
           path={routes.mypage} 
           element={<ProtectedRoute session={session}><MyPage {...commonPageProps} /></ProtectedRoute>} 
+        />
+        <Route 
+          path={routes.myGroups} 
+          element={<ProtectedRoute session={session}><MyGroupsPage {...commonPageProps} /></ProtectedRoute>} 
+        />
+        <Route 
+          path={routes.mypageEdit} 
+          element={<ProtectedRoute session={session}><MyPageEdit {...commonPageProps} /></ProtectedRoute>} 
         />
         
         {/* 404 Not Found 또는 다른 경로 처리 */}

@@ -70,33 +70,37 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
       <main className="container mx-auto px-6 py-8">
         {/* 그룹 헤더 */}
         <div className="bg-white rounded-2xl p-6 border-2 border-indigo-200 shadow-lg mb-6">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800 mb-2">{group.name}</h1>
-              <div className="flex items-center gap-2">
-                <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg font-mono font-bold">
-                  {group.code}
-                </span>
-                <button
-                  onClick={handleCopyCode}
-                  className={`p-2 rounded-lg transition-colors ${
-                    copied
-                      ? "bg-green-500 text-white"
-                      : "bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
-                  }`}
+            <div className="flex justify-between items-start">
+              <div>
+                <h1 className="text-3xl font-bold text-gray-800 mb-2">{group.name}</h1>
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg font-mono font-bold">
+                    {group.code}
+                  </span>
+                  <button
+                    onClick={handleCopyCode}
+                    className={`p-2 rounded-lg transition-colors ${
+                      copied
+                        ? "bg-green-500 text-white"
+                        : "bg-indigo-100 text-indigo-600 hover:bg-indigo-200"
+                    }`}
+                  >
+                    {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </button>
+                  {copied && <span className="text-sm text-green-600">복사됨!</span>}
+                </div>
+              </div>
+              {isCreator && (
+                <Button 
+                  variant="secondary" 
+                  onClick={() => navigate(routes.groupManage.replace(':groupId', groupId))}
+                  className="flex items-center gap-2"
                 >
-                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                </button>
-                {copied && <span className="text-sm text-green-600">복사됨!</span>}
-              </div>
+                  <Settings className="w-5 h-5" />
+                  그룹 관리
+                </Button>
+              )}
             </div>
-            {isCreator && (
-              <div className="flex items-center gap-2 text-indigo-600">
-                <Settings className="w-5 h-5" />
-                <span className="text-sm font-medium">그룹장</span>
-              </div>
-            )}
-          </div>
 
           {/* 통계 카드 */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

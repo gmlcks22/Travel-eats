@@ -20,4 +20,14 @@ export default defineConfig({
       { find: "@hooks", replacement: "/src/hooks" },
     ],
   },
+  server: {
+    // 개발 서버 프록시 설정 (CORS 우회)
+    proxy: {
+      '/maps/api': {
+        target: 'https://maps.googleapis.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/maps\/api/, '/maps/api'),
+      },
+    },
+  },
 });

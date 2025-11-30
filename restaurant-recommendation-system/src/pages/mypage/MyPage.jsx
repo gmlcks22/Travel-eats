@@ -86,8 +86,7 @@ export default function MyPage({ session, token, handleLogout }) {
                   </p>
                 </div>
               </div>
-              {/* TODO: 정보 수정 페이지 라우트 추가 필요 */}
-              {/* <Button
+              <Button
                 variant="secondary"
                 size="md"
                 onClick={() => navigate(routes.mypageEdit)}
@@ -95,7 +94,7 @@ export default function MyPage({ session, token, handleLogout }) {
               >
                 <Settings className="w-5 h-5" />
                 정보 수정
-              </Button> */}
+              </Button>
             </div>
           </div>
 
@@ -190,10 +189,19 @@ export default function MyPage({ session, token, handleLogout }) {
 
           {/* 참여 그룹 목록 */}
           <div className="bg-white rounded-2xl p-8 border-2 border-indigo-200 shadow-lg">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-2">
-              <Users className="w-7 h-7 text-indigo-600" />
-              참여 중인 그룹
-            </h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <Users className="w-7 h-7 text-indigo-600" />
+                참여 중인 그룹
+              </h2>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => navigate(routes.myGroups)}
+              >
+                전체 보기
+              </Button>
+            </div>
 
             {userGroups.length === 0 ? (
               <div className="text-center py-12">
