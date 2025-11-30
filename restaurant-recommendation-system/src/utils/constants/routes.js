@@ -27,6 +27,7 @@ const routes = {
   mypage: "/mypage",              // 마이페이지 메인
   mypageEdit: "/mypage/edit",     // 개인정보 수정
   myGroups: "/mypage/groups",     // 참여 그룹 목록
+  preferenceEdit: "/mypage/preference", // 개인 선호도
 };
 
 export default routes;

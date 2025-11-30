@@ -14,6 +14,8 @@ import LoadingPage from "@pages/food/LoadingPage";
 import FoodResultPage from "@pages/food/FoodResultPage";
 import FoodDetailPage from "@pages/food/FoodDetailPage";
 import MyPage from "@pages/mypage/MyPage";
+import MyPageEdit from "@pages/mypage/MyPageEdit";
+import PreferenceEdit from "@pages/mypage/PreferenceEdit";
 
 /**
  * App 컴포넌트
@@ -45,6 +47,8 @@ function App() {
         
         {/* 마이페이지 */}
         <Route path={routes.mypage} element={<MyPage />} />
+        <Route path={routes.mypageEdit} element={<MyPageEdit />} />
+        <Route path={routes.preferenceEdit} element={<PreferenceEdit />} />
       </Routes>
     </Router>
   );

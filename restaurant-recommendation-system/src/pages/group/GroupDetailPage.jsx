@@ -17,18 +17,25 @@ import { Users, MapPin, Calendar, Copy, Check, Settings } from "lucide-react";
 export default function GroupDetailPage() {
   const navigate = useNavigate();
   const { groupId } = useParams();
-  const currentUser = getCurrentUser();
+  const [currentUser, setCurrentUser] = useState(null);
   const [group, setGroup] = useState(null);
   const [members, setMembers] = useState([]);
   const [copied, setCopied] = useState(false);
 
-  // 로그인 체크
+  // 로그인 체크 - 마운트 시 한 번만
   useEffect(() => {
-    if (!currentUser) {
+    const user = getCurrentUser();
+    if (!user) {
       alert("로그인이 필요합니다.");
       navigate(routes.login);
       return;
     }
+    setCurrentUser(user);
+  }, [navigate]);
+
+  // 그룹 정보 로드 - currentUser와 groupId가 준비되면
+  useEffect(() => {
+    if (!currentUser || !groupId) return;
 
     // 그룹 정보 로드
     const groupData = getGroupById(groupId);
@@ -53,7 +60,7 @@ export default function GroupDetailPage() {
       allUsers.find(u => u.id === memberId)
     ).filter(Boolean);
     setMembers(memberData);
-  }, [groupId, currentUser, navigate]);
+  }, [currentUser, groupId, navigate]);
 
   // 코드 복사 기능
   const handleCopyCode = () => {
@@ -74,8 +81,12 @@ export default function GroupDetailPage() {
     navigate(routes.foodResult.replace(":groupId", groupId));
   };
 
-  if (!group) {
-    return <div className="min-h-screen flex items-center justify-center">로딩 중...</div>;
+  if (!currentUser || !group) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-600">로딩 중...</p>
+      </div>
+    );
   }
 
   const isCreator = group.creatorId === currentUser.id;

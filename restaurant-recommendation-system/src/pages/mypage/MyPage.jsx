@@ -29,20 +29,17 @@ export default function MyPage() {
 
     const groups = getUserGroups(currentUser.id);
     setUserGroups(groups);
-  }, [currentUser, navigate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 그룹 상세로 이동
   const handleGroupClick = (group) => {
     navigate(routes.groupDetail.replace(":groupId", group.id));
   };
 
-  // 선호도 수정 (첫 번째 그룹 기준)
+  // 선호도 수정 (독립적인 페이지로 이동)
   const handleEditPreference = () => {
-    if (userGroups.length > 0) {
-      navigate(routes.foodPreference.replace(":groupId", userGroups[0].id));
-    } else {
-      alert("먼저 그룹에 참여해주세요.");
-    }
+    navigate(routes.preferenceEdit);
   };
 
   if (!currentUser) {
