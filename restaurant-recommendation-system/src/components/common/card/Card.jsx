@@ -1,6 +1,23 @@
 import React from "react";
 import { MapPin, Star, DollarSign } from "lucide-react";
 
+// 가격 수준을 달러 기호로 렌더링하는 헬퍼 함수
+const renderPriceLevel = (priceLevel) => {
+  if (typeof priceLevel !== 'number' || priceLevel < 1) {
+    return <span className="text-gray-400">가격 정보 없음</span>;
+  }
+  return (
+    <span className="font-bold">
+      <span className="text-green-600">
+        {'$'.repeat(priceLevel)}
+      </span>
+      <span className="text-gray-300">
+        {'$'.repeat(4 - priceLevel)}
+      </span>
+    </span>
+  );
+};
+
 /**
  * 식당 카드 컴포넌트
  * @param {Object} restaurant - 식당 정보
@@ -53,7 +70,7 @@ export function RestaurantCard({ restaurant, consensus, onClick }) {
           </div>
           <div className="flex items-center gap-1">
             <DollarSign className="w-4 h-4" />
-            <span>{restaurant.avgPrice?.toLocaleString()}원</span>
+            {renderPriceLevel(restaurant.avgPrice)}
           </div>
         </div>
 
@@ -96,9 +113,9 @@ export function GroupCard({ group, onClick }) {
       <div className="space-y-2 text-sm text-gray-600">
         <p>멤버 수: {group.members?.length || 0}명</p>
         <p>생성일: {new Date(group.createdAt).toLocaleDateString()}</p>
-        {group.tripPlan && (
-          <p className="text-indigo-600">
-            📍 {group.tripPlan.region} | {group.tripPlan.days}일 여행
+        {group.tripPlan?.days && (
+          <p className="text-indigo-600 font-bold">
+            📍 {group.tripPlan.days[0]?.description || '여행'} | {group.tripPlan.days.length}일 여행
           </p>
         )}
       </div>
