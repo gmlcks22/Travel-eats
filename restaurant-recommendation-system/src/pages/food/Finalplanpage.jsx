@@ -16,6 +16,7 @@ import {
   Sunrise,
   Sun,
   Sunset,
+  DollarSign,
 } from "lucide-react";
 
 // 끼니 정보
@@ -334,23 +335,45 @@ export default function FinalPlanPage({ session, token, handleLogout }) {
                             {restaurant.rating || "N/A"}
                           </span>
                         </div>
+                        {/* 가격 표시 */}
+                        {restaurant.priceLevel !== null &&
+                          restaurant.priceLevel !== undefined && (
+                            <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded-full flex items-center gap-1">
+                              <DollarSign className="w-3 h-3" />
+                              <span className="text-xs font-bold">
+                                {"$".repeat(restaurant.priceLevel)}
+                              </span>
+                            </div>
+                          )}
                       </div>
 
                       {/* 정보 */}
-                      <h4 className="font-bold text-gray-800 mb-1 truncate">
+                      <h4 className="font-bold text-gray-800 mb-2 truncate">
                         {restaurant.name}
                       </h4>
 
                       {/* 상세 정보 */}
                       <div className="mb-3 space-y-1">
-                        <div className="flex items-center gap-1 text-xs text-gray-600">
-                          <Star className="w-3 h-3 text-yellow-500" />
-                          <span className="font-semibold">
-                            {restaurant.rating || "N/A"}
-                          </span>
-                          {restaurant.user_ratings_total && (
-                            <span>({restaurant.user_ratings_total})</span>
-                          )}
+                        <div className="flex items-center justify-between text-xs text-gray-600">
+                          <div className="flex items-center gap-1">
+                            <Star className="w-3 h-3 text-yellow-500" />
+                            <span className="font-semibold">
+                              {restaurant.rating || "N/A"}
+                            </span>
+                            {restaurant.user_ratings_total && (
+                              <span>({restaurant.user_ratings_total})</span>
+                            )}
+                          </div>
+                          {/* 가격 정보 */}
+                          {restaurant.priceLevel !== null &&
+                            restaurant.priceLevel !== undefined && (
+                              <div className="flex items-center gap-1">
+                                <DollarSign className="w-3 h-3 text-green-600" />
+                                <span className="font-bold text-green-600">
+                                  {"$".repeat(restaurant.priceLevel)}
+                                </span>
+                              </div>
+                            )}
                         </div>
                         <p className="text-xs text-gray-600 flex items-start gap-1 line-clamp-2">
                           <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
