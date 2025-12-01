@@ -199,7 +199,7 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
 
       <main className="container mx-auto px-6 py-8">
         {/* 그룹 헤더 */}
-        <div className="bg-white rounded-2xl p-6 border-2 border-indigo-200 shadow-lg mb-6">
+        <div className="bg-white rounded-2xl p-6 shadow-lg mb-6">
           <div className="flex justify-between items-start mb-6">
             <div>
               <h1 className="text-3xl font-bold text-gray-800 mb-2">
@@ -275,7 +275,7 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
                 />
               </>
             ) : (
-              <div className="col-span-3 flex items-center justify-center bg-yellow-50 rounded-lg border-2 border-yellow-200 p-4">
+              <div className="col-span-3 flex items-center justify-center bg-yellow-50 rounded-lg shadow-md p-4">
                 <p className="text-yellow-800">
                   아직 여행 계획이 설정되지 않았습니다
                 </p>
@@ -288,7 +288,7 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
           {/* 왼쪽: 멤버 목록 + 그룹 선호도 합의 */}
           <div className="lg:col-span-2 space-y-6">
             {/* 멤버 목록 */}
-            <div className="bg-white rounded-2xl p-6 border-2 border-indigo-200 shadow-lg">
+            <div className="bg-white rounded-2xl p-6 shadow-lg">
               <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                 <Users className="w-6 h-6 text-indigo-600" />
                 그룹 멤버
@@ -297,7 +297,7 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
                 {group.members.map((member) => (
                   <div
                     key={member.id}
-                    className="flex items-center justify-between p-4 bg-indigo-50 rounded-lg border border-indigo-200"
+                    className="flex items-center justify-between p-4 bg-indigo-50 rounded-lg shadow-md"
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold">
@@ -329,14 +329,14 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
 
             {/* 그룹 선호도 합의 */}
             {membersWithoutPreference.length === 0 && (
-              <div className="bg-white rounded-2xl p-6 border-2 border-indigo-200 shadow-lg">
+              <div className="bg-white rounded-2xl p-6 -2 shadow-lg">
                 <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                   <Heart className="w-6 h-6 text-indigo-600" />
                   그룹 선호도 합의
                 </h2>
                 <div className="space-y-4">
                   {groupConsensus.likedCategories.length > 0 && (
-                    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                    <div className="p-4 bg-green-50 rounded-lg shadow-md">
                       <h3 className="font-bold text-green-800 mb-2 flex items-center gap-2">
                         <Heart className="w-5 h-5" />
                         좋아하는 음식 종류
@@ -359,7 +359,7 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
                   )}
 
                   {groupConsensus.likedKeywords.length > 0 && (
-                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="p-4 bg-blue-50 rounded-lg shadow-md">
                       <h3 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
                         <Heart className="w-5 h-5" />
                         선호하는 맛/재료
@@ -381,7 +381,7 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
                   )}
 
                   {groupConsensus.dislikedCategories.length > 0 && (
-                    <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                    <div className="p-4 bg-yellow-50 rounded-lg shadow-md">
                       <h3 className="font-bold text-yellow-800 mb-2 flex items-center gap-2">
                         <ThumbsDown className="w-5 h-5" />
                         선호하지 않는 음식 종류
@@ -403,7 +403,7 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
                   )}
 
                   {groupConsensus.dislikedKeywords.length > 0 && (
-                    <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                    <div className="p-4 bg-orange-50 rounded-lg shadow-md">
                       <h3 className="font-bold text-orange-800 mb-2 flex items-center gap-2">
                         <ThumbsDown className="w-5 h-5" />
                         피하고 싶은 맛/재료
@@ -431,7 +431,7 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
           {/* 오른쪽: 액션 버튼 */}
           <div className="space-y-4">
             {!group.tripPlan?.days ? (
-              <div className="bg-white rounded-2xl p-6 border-2 border-indigo-200 shadow-lg">
+              <div className="bg-white rounded-2xl p-6 shadow-lg">
                 <h3 className="font-bold text-gray-800 mb-3">다음 단계</h3>
                 <p className="text-sm text-gray-600 mb-4">
                   여행 계획을 설정하고 멤버들의 음식 선호도를 입력하세요.
@@ -448,7 +448,7 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
             ) : (
               <>
                 {/* 식당 추천 */}
-                <div className="bg-white rounded-2xl p-6 border-2 border-indigo-200 shadow-lg">
+                <div className="bg-white rounded-2xl p-6 shadow-lg">
                   <h3 className="font-bold text-gray-800 mb-3">식당 추천</h3>
                   {hasRestaurants ? (
                     <>
@@ -509,7 +509,7 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
 
                 {/* 최종 계획 */}
                 {allDaysSelected && (
-                  <div className="bg-white rounded-2xl p-6 border-2 border-green-200 shadow-lg">
+                  <div className="bg-white rounded-2xl p-6 shadow-lg">
                     <h3 className="font-bold text-gray-800 mb-3">
                       ✅ 계획 완료
                     </h3>
@@ -543,7 +543,7 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
             )}
 
             {/* 안내 */}
-            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-5 border-2 border-indigo-200">
+            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-xl p-5 border-2 border-indigo-200 shadow-lg shadow-indigo-200">
               <p className="text-sm text-gray-700">
                 💡 <strong>팁:</strong>
                 <br />
