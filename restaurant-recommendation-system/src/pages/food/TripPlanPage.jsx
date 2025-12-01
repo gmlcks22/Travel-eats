@@ -238,10 +238,9 @@ export default function TripPlanPage({ session, token, handleLogout }) {
   if (!API_KEY || API_KEY === "YOUR_API_KEY") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
-        <header className="p-5 bg-indigo-100 border-b-3 border-indigo-300 rounded-b-2xl shadow-sm">
-          <HeaderBar session={session} handleLogout={handleLogout} />
-        </header>
-        <main className="container mx-auto px-4 py-8">
+              <header className="sticky top-0 z-50 p-2 bg-white/80 backdrop-blur-3xl rounded-none shadow-sm">
+                <HeaderBar session={session} handleLogout={handleLogout} />
+              </header>        <main className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto">
             <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-8 text-center">
               <h2 className="text-2xl font-bold text-red-800 mb-4">
@@ -286,7 +285,7 @@ export default function TripPlanPage({ session, token, handleLogout }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
       {/* 헤더 */}
-      <header className="p-5 bg-indigo-100 border-b-3 border-indigo-300 rounded-b-2xl shadow-sm">
+      <header className="sticky top-0 z-50 p-2 bg-white/80 backdrop-blur-3xl rounded-none shadow-sm">
         <HeaderBar session={session} handleLogout={handleLogout} />
       </header>
 

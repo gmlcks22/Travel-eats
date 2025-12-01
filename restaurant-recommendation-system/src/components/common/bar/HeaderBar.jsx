@@ -54,9 +54,9 @@ export default function HeaderBar({ session, handleLogout }) {
       {/* 로고 */}
       <button
         onClick={() => navigate(routes.home)}
-        className="flex items-center gap-2 text-2xl font-bold text-indigo-700 hover:text-indigo-800 transition-colors"
+        className="flex items-baseline gap-2 text-xl font-bold text-indigo-700 hover:text-indigo-800 transition-colors"
       >
-        <Utensils className="w-8 h-8" />
+        <Utensils className="w-6 h-6" />
         <span>나는 음식에 진심이다!</span>
       </button>
 
@@ -67,7 +67,7 @@ export default function HeaderBar({ session, handleLogout }) {
             {/* 프로필 아바타 버튼 (드롭다운 토글) */}
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className={`flex items-center justify-center w-10 h-10 rounded-full ${
+              className={`flex items-center justify-center w-8 h-8 rounded-full ${
                 COLOR_MAP[session.user.avatarColor || "indigo"]?.bg ||
                 "bg-indigo-600"
               } text-white font-bold ${
@@ -81,7 +81,7 @@ export default function HeaderBar({ session, handleLogout }) {
 
             {/* 드롭다운 메뉴 */}
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white bg-opacity-90 rounded-md shadow-lg py-1 px-2 ring-1 ring-gray-200 ring-opacity-5 z-10">
+              <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg py-2 px-2 ring-1 ring-gray-200 ring-opacity-5 z-10">
                 <div className="px-4 py-2 text-sm font-semibold text-gray-800 border-b border-gray-200 rounded-t-md">
                   {session.user.nickname}
                 </div>

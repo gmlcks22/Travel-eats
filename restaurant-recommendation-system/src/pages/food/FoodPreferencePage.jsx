@@ -169,7 +169,9 @@ export default function FoodPreferencePage({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
-      <HeaderBar session={session} handleLogout={handleLogout} />
+      <header className="sticky top-0 z-50 p-2 bg-white/80 backdrop-blur-3xl rounded-none shadow-sm">
+        <HeaderBar session={session} handleLogout={handleLogout} />
+      </header>
 
       <main className="container mx-auto px-6 py-8">
         <div className="max-w-4xl mx-auto">
