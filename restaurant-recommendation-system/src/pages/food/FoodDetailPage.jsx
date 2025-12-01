@@ -15,6 +15,7 @@ import {
   Phone,
   Globe,
   MessageSquare,
+  DollarSign,
 } from "lucide-react";
 
 const API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
@@ -24,11 +25,22 @@ const renderPriceLevel = (priceLevel) => {
   if (typeof priceLevel !== "number" || priceLevel < 1) {
     return <span className="text-gray-500">정보 없음</span>;
   }
+
+  const priceLabels = {
+    1: "저렴 (~10,000원)",
+    2: "보통 (10,000~30,000원)",
+    3: "비싼 (30,000~60,000원)",
+    4: "고급 (60,000원+)",
+  };
+
   return (
-    <span className="font-bold text-green-600">
-      {"₩".repeat(priceLevel)}
-      <span className="text-gray-300">{"₩".repeat(4 - priceLevel)}</span>
-    </span>
+    <div className="flex items-center gap-2">
+      <span className="font-bold text-green-600 text-lg">
+        {"$".repeat(priceLevel)}
+        <span className="text-gray-300">{"$".repeat(4 - priceLevel)}</span>
+      </span>
+      <span className="text-sm text-gray-600">({priceLabels[priceLevel]})</span>
+    </div>
   );
 };
 
@@ -84,6 +96,7 @@ export default function FoodDetailPage({ session, token, handleLogout }) {
                 category: found.types?.[0] || "restaurant",
                 rating: found.rating || 0,
                 user_ratings_total: found.user_ratings_total || 0,
+                priceLevel: found.price_level ?? null,
                 location: {
                   address: found.vicinity || found.formatted_address || "",
                   lat: found.geometry?.location?.lat || 0,
@@ -94,7 +107,6 @@ export default function FoodDetailPage({ session, token, handleLogout }) {
                     (photo) =>
                       `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photoreference=${photo.photo_reference}&key=${API_KEY}`
                   ) || [],
-                avgPrice: found.price_level,
               };
               break;
             }
@@ -212,9 +224,12 @@ export default function FoodDetailPage({ session, token, handleLogout }) {
                   </div>
 
                   {/* 가격대 */}
-                  <div className="flex items-center gap-3 text-lg">
-                    <span className="w-6 text-center">💰</span>
-                    <span>가격대: {renderPriceLevel(restaurant.avgPrice)}</span>
+                  <div className="flex items-center gap-3">
+                    <DollarSign className="w-6 h-6 text-green-600" />
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-700 font-medium">가격대:</span>
+                      {renderPriceLevel(restaurant.priceLevel)}
+                    </div>
                   </div>
 
                   {/* 주소 */}
