@@ -13,10 +13,38 @@ import {
   ExternalLink,
   ArrowLeft,
   CheckCircle2,
+  Sunrise,
+  Sun,
+  Sunset,
 } from "lucide-react";
 
+// 끼니 정보
+const MEAL_TYPES = [
+  {
+    id: "breakfast",
+    label: "아침",
+    icon: Sunrise,
+    color: "bg-orange-500",
+    textColor: "text-orange-100",
+  },
+  {
+    id: "lunch",
+    label: "점심",
+    icon: Sun,
+    color: "bg-yellow-500",
+    textColor: "text-yellow-100",
+  },
+  {
+    id: "dinner",
+    label: "저녁",
+    icon: Sunset,
+    color: "bg-indigo-500",
+    textColor: "text-indigo-100",
+  },
+];
+
 /**
- * 최종 여행 계획 페이지 - 선택된 식당 확인
+ * 최종 여행 계획 페이지 - 끼니별 선택 결과 표시
  */
 export default function FinalPlanPage({ session, token, handleLogout }) {
   const navigate = useNavigate();
@@ -25,7 +53,7 @@ export default function FinalPlanPage({ session, token, handleLogout }) {
   const [group, setGroup] = useState(null);
   const [tripDays, setTripDays] = useState([]);
   const [selectedRestaurants, setSelectedRestaurants] = useState({});
-  const [activeDayIndex, setActiveDayIndex] = useState(0); // 현재 보고 있는 일차
+  const [activeDayIndex, setActiveDayIndex] = useState(0);
 
   const selectedRestaurantsKey = `selectedRestaurants_${groupId}`;
 
@@ -39,35 +67,15 @@ export default function FinalPlanPage({ session, token, handleLogout }) {
         const days = groupData.tripPlan?.days || [];
         setTripDays(days);
 
-        console.log("🎯 FinalPlanPage 로드");
-        console.log("여행 일수:", days.length);
-
         // localStorage에서 선택된 식당 로드
         const saved = localStorage.getItem(selectedRestaurantsKey);
         if (saved) {
           const parsed = JSON.parse(saved);
-          console.log("💾 선택된 식당:", parsed);
           setSelectedRestaurants(parsed);
 
-          // 모든 날짜가 선택되었는지 확인
-          const totalDays = days.length;
-          const selectedKeys = Object.keys(parsed);
-
-          const missingDays = [];
-          for (let i = 0; i < totalDays; i++) {
-            if (!selectedKeys.includes(String(i))) {
-              missingDays.push(i + 1);
-            }
-          }
-
-          if (missingDays.length > 0) {
-            alert(
-              `아직 모든 날짜의 식당을 선택하지 않았습니다.\n선택되지 않은 날짜: ${missingDays.join(
-                ", "
-              )}일차`
-            );
+          if (Object.keys(parsed).length === 0) {
+            alert("선택된 식당이 없습니다.");
             navigate(routes.foodResult.replace(":groupId", groupId));
-            return;
           }
         } else {
           alert("선택된 식당이 없습니다.");
@@ -108,17 +116,26 @@ export default function FinalPlanPage({ session, token, handleLogout }) {
 
   const totalDays = tripDays.length;
   const currentDay = tripDays[activeDayIndex];
-  const currentRestaurant = selectedRestaurants[activeDayIndex];
 
   // 통계 계산
-  const allRestaurants = Object.values(selectedRestaurants);
+  let totalRestaurants = 0;
+  let totalRating = 0;
+  let ratingCount = 0;
+
+  Object.values(selectedRestaurants).forEach((restaurants) => {
+    if (Array.isArray(restaurants)) {
+      totalRestaurants += restaurants.length;
+      restaurants.forEach((r) => {
+        if (r.rating) {
+          totalRating += r.rating;
+          ratingCount++;
+        }
+      });
+    }
+  });
+
   const avgRating =
-    allRestaurants.length > 0
-      ? (
-          allRestaurants.reduce((sum, r) => sum + (r.rating || 0), 0) /
-          allRestaurants.length
-        ).toFixed(1)
-      : "0";
+    ratingCount > 0 ? (totalRating / ratingCount).toFixed(1) : "0";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
@@ -129,14 +146,20 @@ export default function FinalPlanPage({ session, token, handleLogout }) {
       <main className="container mx-auto px-6 py-8">
         {/* 헤더 */}
         <div className="mb-8">
-          <Button
-            variant="secondary"
-            onClick={handleBackToResult}
-            className="mb-4"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            식당 다시 선택
-          </Button>
+          <div className="flex gap-2 mb-4">
+            <Button
+              variant="secondary"
+              onClick={() =>
+                navigate(routes.groupDetail.replace(":groupId", groupId))
+              }
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              그룹으로 돌아가기
+            </Button>
+            <Button variant="secondary" onClick={handleBackToResult}>
+              식당 다시 선택
+            </Button>
+          </div>
 
           <div className="flex items-center justify-between">
             <div>
@@ -159,9 +182,9 @@ export default function FinalPlanPage({ session, token, handleLogout }) {
           <div className="bg-white rounded-xl p-6 border-2 border-indigo-200 shadow-lg">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-gray-600 mb-1">선택 완료</div>
+                <div className="text-sm text-gray-600 mb-1">선택한 식당</div>
                 <div className="text-3xl font-bold text-green-600">
-                  {Object.keys(selectedRestaurants).length}/{totalDays}
+                  {totalRestaurants}개
                 </div>
               </div>
               <CheckCircle2 className="w-12 h-12 text-green-600" />
@@ -200,165 +223,210 @@ export default function FinalPlanPage({ session, token, handleLogout }) {
             일차 선택
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {tripDays.map((day, index) => (
-              <button
-                key={index}
-                onClick={() => setActiveDayIndex(index)}
-                className={`p-4 rounded-xl border-2 transition-all ${
-                  activeDayIndex === index
-                    ? "border-indigo-600 bg-indigo-50 shadow-lg"
-                    : "border-gray-300 bg-white hover:border-indigo-400 hover:shadow-md"
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span
-                    className={`text-lg font-bold ${
-                      activeDayIndex === index
-                        ? "text-indigo-600"
-                        : "text-gray-700"
-                    }`}
-                  >
-                    {index + 1}일차
-                  </span>
-                  {selectedRestaurants[index] && (
-                    <CheckCircle2 className="w-5 h-5 text-green-600" />
-                  )}
-                </div>
-                <div
-                  className={`text-sm ${
+            {tripDays.map((day, index) => {
+              // 해당 일차의 선택된 끼니 개수
+              const breakfastCount = (
+                selectedRestaurants[`${index}_breakfast`] || []
+              ).length;
+              const lunchCount = (selectedRestaurants[`${index}_lunch`] || [])
+                .length;
+              const dinnerCount = (selectedRestaurants[`${index}_dinner`] || [])
+                .length;
+              const hasSelection =
+                breakfastCount + lunchCount + dinnerCount > 0;
+
+              return (
+                <button
+                  key={index}
+                  onClick={() => setActiveDayIndex(index)}
+                  className={`p-4 rounded-xl border-2 transition-all ${
                     activeDayIndex === index
-                      ? "text-indigo-600"
-                      : "text-gray-600"
+                      ? "border-indigo-600 bg-indigo-50 shadow-lg"
+                      : "border-gray-300 bg-white hover:border-indigo-400 hover:shadow-md"
                   }`}
                 >
-                  {day.description}
-                </div>
-              </button>
-            ))}
+                  <div className="flex items-center justify-between mb-2">
+                    <span
+                      className={`text-lg font-bold ${
+                        activeDayIndex === index
+                          ? "text-indigo-600"
+                          : "text-gray-700"
+                      }`}
+                    >
+                      {index + 1}일차
+                    </span>
+                    {hasSelection && (
+                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                    )}
+                  </div>
+                  <div
+                    className={`text-sm ${
+                      activeDayIndex === index
+                        ? "text-indigo-600"
+                        : "text-gray-600"
+                    }`}
+                  >
+                    {day.description}
+                  </div>
+                  {hasSelection && (
+                    <div className="mt-2 text-xs text-gray-600">
+                      {breakfastCount > 0 && `🌅 ${breakfastCount}`}
+                      {lunchCount > 0 && ` ☀️ ${lunchCount}`}
+                      {dinnerCount > 0 && ` 🌆 ${dinnerCount}`}
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* 선택된 식당 상세 정보 */}
-        {currentRestaurant ? (
-          <div className="bg-white rounded-2xl overflow-hidden border-2 border-indigo-200 shadow-lg">
-            {/* 날짜 헤더 */}
-            <div className="bg-gradient-to-r from-indigo-500 to-purple-500 px-6 py-4">
-              <div className="flex items-center justify-between text-white">
-                <div className="flex items-center gap-3">
-                  <Calendar className="w-6 h-6" />
-                  <div>
-                    <h2 className="text-2xl font-bold">
-                      {activeDayIndex + 1}일차
-                    </h2>
-                    <p className="text-indigo-100 flex items-center gap-2">
-                      <MapPin className="w-4 h-4" />
-                      {currentDay.description}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 bg-white/20 px-4 py-2 rounded-lg">
-                  <Star className="w-5 h-5 text-yellow-300" />
-                  <span className="text-xl font-bold">
-                    {currentRestaurant.rating || "N/A"}
-                  </span>
-                </div>
-              </div>
-            </div>
+        {/* 끼니별 식당 표시 */}
+        <div className="space-y-6">
+          {MEAL_TYPES.map((meal) => {
+            const MealIcon = meal.icon;
+            const mealKey = `${activeDayIndex}_${meal.id}`;
+            const restaurants = selectedRestaurants[mealKey] || [];
 
-            {/* 식당 정보 */}
-            <div className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* 이미지 */}
-                <div>
-                  {currentRestaurant.images && currentRestaurant.images[0] ? (
-                    <img
-                      src={currentRestaurant.images[0]}
-                      alt={currentRestaurant.name}
-                      className="w-full h-64 object-cover rounded-xl border-2 border-gray-200"
-                    />
-                  ) : (
-                    <div className="w-full h-64 bg-gray-200 rounded-xl flex items-center justify-center border-2 border-gray-300">
-                      <MapPin className="w-16 h-16 text-gray-400" />
-                    </div>
-                  )}
-                </div>
+            if (restaurants.length === 0) return null;
 
-                {/* 정보 */}
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-2xl font-bold text-gray-800 mb-2">
-                      {currentRestaurant.name}
+            return (
+              <div
+                key={meal.id}
+                className="bg-white rounded-2xl border-2 border-indigo-200 shadow-lg overflow-hidden"
+              >
+                {/* 끼니 헤더 */}
+                <div className={`${meal.color} px-6 py-4`}>
+                  <div className={`flex items-center gap-3 ${meal.textColor}`}>
+                    <MealIcon className="w-6 h-6" />
+                    <h3 className="text-2xl font-bold text-white">
+                      {meal.label}
                     </h3>
-                    {currentRestaurant.category && (
-                      <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium">
-                        {currentRestaurant.category}
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-2 text-gray-700">
-                    <Star className="w-5 h-5 text-yellow-500" />
-                    <span className="font-semibold">
-                      {currentRestaurant.rating || "N/A"}
-                    </span>
-                    {currentRestaurant.user_ratings_total && (
-                      <span className="text-gray-600">
-                        ({currentRestaurant.user_ratings_total}개 리뷰)
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="flex items-start gap-2 text-gray-700">
-                    <MapPin className="w-5 h-5 mt-0.5 flex-shrink-0 text-indigo-600" />
-                    <span>
-                      {currentRestaurant.location?.address || "주소 정보 없음"}
+                    <span className="text-white/90">
+                      ({restaurants.length}개 선택)
                     </span>
                   </div>
+                </div>
 
-                  {/* 액션 버튼 */}
-                  <div className="flex flex-col gap-3 pt-4">
-                    <Button
-                      variant="primary"
-                      size="lg"
-                      onClick={() =>
-                        handleViewOnGoogleMaps(currentRestaurant.id)
-                      }
-                      className="w-full"
+                {/* 식당 목록 */}
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {restaurants.map((restaurant, idx) => (
+                    <div
+                      key={`${restaurant.id}_${idx}`}
+                      className="bg-gray-50 rounded-xl p-4 border-2 border-gray-200 hover:border-indigo-400 hover:shadow-md transition-all"
                     >
-                      <ExternalLink className="w-5 h-5 mr-2" />
-                      Google Maps에서 보기
-                    </Button>
+                      {/* 이미지 */}
+                      <div className="relative h-32 mb-3 rounded-lg overflow-hidden">
+                        {restaurant.images && restaurant.images[0] ? (
+                          <img
+                            src={restaurant.images[0]}
+                            alt={restaurant.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gray-300 flex items-center justify-center">
+                            <MapPin className="w-8 h-8 text-gray-500" />
+                          </div>
+                        )}
+                        <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded-full flex items-center gap-1">
+                          <Star className="w-3 h-3 text-yellow-400" />
+                          <span className="text-sm font-bold">
+                            {restaurant.rating || "N/A"}
+                          </span>
+                        </div>
+                      </div>
 
-                    {currentRestaurant.location?.lat &&
-                      currentRestaurant.location?.lng && (
+                      {/* 정보 */}
+                      <h4 className="font-bold text-gray-800 mb-1 truncate">
+                        {restaurant.name}
+                      </h4>
+
+                      {/* 상세 정보 */}
+                      <div className="mb-3 space-y-1">
+                        <div className="flex items-center gap-1 text-xs text-gray-600">
+                          <Star className="w-3 h-3 text-yellow-500" />
+                          <span className="font-semibold">
+                            {restaurant.rating || "N/A"}
+                          </span>
+                          {restaurant.user_ratings_total && (
+                            <span>({restaurant.user_ratings_total})</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-600 flex items-start gap-1 line-clamp-2">
+                          <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                          <span>
+                            {restaurant.location?.address || "주소 정보 없음"}
+                          </span>
+                        </p>
+                      </div>
+
+                      {/* 버튼들 */}
+                      <div className="space-y-2">
                         <Button
                           variant="secondary"
-                          size="lg"
+                          size="sm"
                           onClick={() =>
-                            handleGetDirections(
-                              currentRestaurant.location.lat,
-                              currentRestaurant.location.lng
+                            navigate(
+                              routes.foodDetail
+                                .replace(":groupId", groupId)
+                                .replace(":restaurantId", restaurant.id)
                             )
                           }
-                          className="w-full"
+                          className="w-full text-xs"
                         >
-                          <Navigation className="w-5 h-5 mr-2" />
-                          길찾기
+                          상세보기
                         </Button>
-                      )}
-                  </div>
+
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() =>
+                              handleViewOnGoogleMaps(restaurant.id)
+                            }
+                            className="text-xs"
+                          >
+                            <ExternalLink className="w-3 h-3 mr-1" />
+                            지도
+                          </Button>
+                          {restaurant.location?.lat &&
+                            restaurant.location?.lng && (
+                              <Button
+                                variant="secondary"
+                                size="sm"
+                                onClick={() =>
+                                  handleGetDirections(
+                                    restaurant.location.lat,
+                                    restaurant.location.lng
+                                  )
+                                }
+                                className="text-xs"
+                              >
+                                <Navigation className="w-3 h-3 mr-1" />
+                                길찾기
+                              </Button>
+                            )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
+            );
+          })}
+
+          {/* 선택된 식당이 하나도 없을 때 */}
+          {Object.keys(selectedRestaurants).filter((key) =>
+            key.startsWith(`${activeDayIndex}_`)
+          ).length === 0 && (
+            <div className="bg-white rounded-2xl p-12 text-center border-2 border-gray-300">
+              <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 text-lg">
+                {activeDayIndex + 1}일차에 선택된 식당이 없습니다.
+              </p>
             </div>
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl p-12 text-center border-2 border-gray-300">
-            <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600 text-lg">
-              {activeDayIndex + 1}일차에 선택된 식당이 없습니다.
-            </p>
-          </div>
-        )}
+          )}
+        </div>
       </main>
     </div>
   );

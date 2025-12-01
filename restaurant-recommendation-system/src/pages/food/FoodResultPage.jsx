@@ -1,54 +1,79 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import HeaderBar from "@common/bar/HeaderBar";
 import Button from "@common/button/Button";
-import { RestaurantCard, InfoCard } from "@components/common/card/Card";
 import routes from "@utils/constants/routes";
 import { getGroupById } from "@utils/helpers/storage";
 import {
-  Trophy,
-  MapPin,
-  Star,
-  TrendingUp,
-  ArrowLeft,
-  Check,
   Calendar,
+  Star,
+  MapPin,
+  Check,
+  Filter,
+  ChevronRight,
+  Sunrise,
+  Sun,
+  Sunset,
+  ExternalLink,
+  Navigation,
 } from "lucide-react";
 
-const API_KEY = import.meta.env.VITE_GOOGLE_PLACES_API_KEY;
-
+// Google Place를 우리 Restaurant 형식으로 변환
 const adaptPlaceToRestaurant = (place) => {
-  let photoUrl = "https://via.placeholder.com/400x300?text=No+Image";
-  if (
-    API_KEY &&
-    API_KEY !== "YOUR_API_KEY" &&
-    place.photos &&
-    place.photos.length > 0
-  ) {
-    const photoReference = place.photos[0].photo_reference;
-    photoUrl = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photoReference}&key=${API_KEY}`;
-  }
-
   return {
     id: place.place_id,
-    place_id: place.place_id,
     name: place.name,
-    images: [photoUrl],
-    category: place.types ? place.types[0] : "음식점",
-    keywords: place.types,
+    category: place.types?.[0] || "restaurant",
     rating: place.rating || 0,
     user_ratings_total: place.user_ratings_total || 0,
-    avgPrice: place.price_level,
     location: {
-      address: place.formatted_address,
-      lat: place.geometry.location.lat,
-      lng: place.geometry.location.lng,
+      address: place.vicinity || place.formatted_address || "",
+      lat: place.geometry?.location?.lat || 0,
+      lng: place.geometry?.location?.lng || 0,
     },
+    images:
+      place.photos?.map(
+        (photo) =>
+          `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${
+            photo.photo_reference
+          }&key=${import.meta.env.VITE_GOOGLE_PLACES_API_KEY}`
+      ) || [],
   };
 };
 
+// 끼니 옵션
+const MEAL_TYPES = [
+  {
+    id: "breakfast",
+    label: "아침",
+    icon: Sunrise,
+    color: "bg-orange-500",
+    textColor: "text-orange-600",
+    borderColor: "border-orange-600",
+    bgLight: "bg-orange-50",
+  },
+  {
+    id: "lunch",
+    label: "점심",
+    icon: Sun,
+    color: "bg-yellow-500",
+    textColor: "text-yellow-600",
+    borderColor: "border-yellow-600",
+    bgLight: "bg-yellow-50",
+  },
+  {
+    id: "dinner",
+    label: "저녁",
+    icon: Sunset,
+    color: "bg-indigo-500",
+    textColor: "text-indigo-600",
+    borderColor: "border-indigo-600",
+    bgLight: "bg-indigo-50",
+  },
+];
+
 /**
- * 식당 추천 결과 페이지 (탭 기반 일자별 보기 + 선택 기능)
+ * 식당 선택 페이지 - 끼니별 선택
  */
 export default function FoodResultPage({ session, token, handleLogout }) {
   const navigate = useNavigate();
@@ -56,175 +81,132 @@ export default function FoodResultPage({ session, token, handleLogout }) {
 
   const [group, setGroup] = useState(null);
   const [restaurantsByDay, setRestaurantsByDay] = useState({});
-  const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [selectedRestaurants, setSelectedRestaurants] = useState({});
+  const [activeDayIndex, setActiveDayIndex] = useState(0);
+  const [activeMealType, setActiveMealType] = useState("breakfast"); // 현재 선택 중인 끼니
   const [filterRating, setFilterRating] = useState(0);
 
   const selectedRestaurantsKey = `selectedRestaurants_${groupId}`;
 
-  // 그룹 및 추천 결과 로드
   useEffect(() => {
     if (token) {
       const result = getGroupById(token, groupId);
-      if (result.success) {
-        const groupData = result.group;
-
-        console.log("🔍 그룹 데이터 확인:", {
-          hasRestaurantsByDay: !!groupData.restaurantsByDay,
-          hasRestaurants: !!groupData.restaurants,
-          tripDaysLength: groupData.tripPlan?.days?.length,
-        });
-
-        // 새로운 구조 restaurantsByDay 우선, 없으면 기존 restaurants 사용
-        let restaurantsData = {};
-
-        if (
-          groupData.restaurantsByDay &&
-          Object.keys(groupData.restaurantsByDay).length > 0
-        ) {
-          // 새 구조 사용
-          restaurantsData = groupData.restaurantsByDay;
-          console.log("📍 restaurantsByDay 로드 성공");
-          console.log("📍 원본 데이터:", restaurantsData);
-          console.log("📍 키 목록:", Object.keys(restaurantsData));
-          console.log("📍 키 타입:", typeof Object.keys(restaurantsData)[0]);
-        } else if (groupData.restaurants && groupData.restaurants.length > 0) {
-          // 하위 호환성: 기존 restaurants를 0일차로 할당
-          restaurantsData = { 0: groupData.restaurants };
-          console.log("📍 기존 restaurants를 0일차로 변환");
-        }
-
-        if (Object.keys(restaurantsData).length === 0) {
-          console.error("❌ restaurantsData가 비어있음!");
-          alert("아직 추천 결과가 없습니다. 식당 추천을 먼저 받아주세요.");
-          navigate(routes.groupDetail.replace(":groupId", groupId));
-          return;
-        }
-
-        // 여행 일수와 추천 결과 일수가 일치하는지 확인
-        const tripDaysCount = groupData.tripPlan?.days?.length || 0;
-        const recommendedDaysCount = Object.keys(restaurantsData).length;
-
-        console.log(
-          `📅 여행 일수: ${tripDaysCount}, 추천 결과 일수: ${recommendedDaysCount}`
-        );
-
-        if (tripDaysCount !== recommendedDaysCount) {
-          console.warn("⚠️ 여행 일수와 추천 결과 일수가 다릅니다!");
-          console.warn("여행 계획을 다시 확인하거나 추천을 다시 받으세요.");
-        }
-
-        // 데이터 변환
-        const adaptedRestaurantsByDay = {};
-        for (const dayIdx in restaurantsData) {
-          const dayRestaurants = restaurantsData[dayIdx];
-          console.log(
-            `🍽️ [${dayIdx}]일차 변환 중: ${dayRestaurants?.length || 0}개 식당`
-          );
-
-          if (Array.isArray(dayRestaurants) && dayRestaurants.length > 0) {
-            adaptedRestaurantsByDay[dayIdx] = dayRestaurants.map(
-              adaptPlaceToRestaurant
-            );
-          } else {
-            console.warn(
-              `⚠️ [${dayIdx}]일차 데이터가 비어있거나 배열이 아닙니다.`
-            );
-          }
-        }
-
-        console.log("✅ 최종 변환 완료");
-        console.log(
-          "✅ adaptedRestaurantsByDay 키:",
-          Object.keys(adaptedRestaurantsByDay)
-        );
-
-        // state 설정 직전 로그
-        console.log(
-          "🎯 setRestaurantsByDay 호출 직전:",
-          adaptedRestaurantsByDay
-        );
-
-        setGroup(groupData);
-        setRestaurantsByDay(adaptedRestaurantsByDay);
-
-        console.log("🎯 state 설정 완료");
-
-        // localStorage에서 선택된 식당 로드
-        const saved = localStorage.getItem(selectedRestaurantsKey);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          console.log("💾 localStorage에서 로드한 선택:", parsed);
-          setSelectedRestaurants(parsed);
-        }
-      } else {
+      if (!result.success) {
         alert(result.message);
         navigate(routes.home);
+        return;
+      }
+
+      const groupData = result.group;
+
+      console.log("🔍 그룹 데이터 확인:", {
+        hasRestaurantsByDay: !!groupData.restaurantsByDay,
+        hasRestaurants: !!groupData.restaurants,
+        tripDaysLength: groupData.tripPlan?.days?.length,
+      });
+
+      // 새로운 구조 restaurantsByDay 우선, 없으면 기존 restaurants 사용
+      let restaurantsData = {};
+
+      if (
+        groupData.restaurantsByDay &&
+        Object.keys(groupData.restaurantsByDay).length > 0
+      ) {
+        restaurantsData = groupData.restaurantsByDay;
+        console.log("📍 restaurantsByDay 로드 성공");
+      } else if (groupData.restaurants && groupData.restaurants.length > 0) {
+        restaurantsData = { 0: groupData.restaurants };
+        console.log("📍 기존 restaurants를 0일차로 변환");
+      }
+
+      if (Object.keys(restaurantsData).length === 0) {
+        alert("아직 추천 결과가 없습니다. 식당 추천을 먼저 받아주세요.");
+        navigate(routes.groupDetail.replace(":groupId", groupId));
+        return;
+      }
+
+      // 데이터 변환
+      const adaptedRestaurantsByDay = {};
+      for (const dayIdx in restaurantsData) {
+        const dayRestaurants = restaurantsData[dayIdx];
+        if (Array.isArray(dayRestaurants) && dayRestaurants.length > 0) {
+          adaptedRestaurantsByDay[dayIdx] = dayRestaurants.map(
+            adaptPlaceToRestaurant
+          );
+        }
+      }
+
+      setGroup(groupData);
+      setRestaurantsByDay(adaptedRestaurantsByDay);
+
+      // localStorage에서 선택된 식당 로드
+      const saved = localStorage.getItem(selectedRestaurantsKey);
+      if (saved) {
+        setSelectedRestaurants(JSON.parse(saved));
       }
     }
   }, [groupId, token, navigate, selectedRestaurantsKey]);
 
-  // 식당 선택/해제
-  const handleSelectRestaurant = (dayIdx, restaurant) => {
-    console.log(
-      `🍽️ 식당 선택/해제: dayIdx=${dayIdx}, restaurant=${restaurant.name}`
-    );
+  // 식당 선택/해제 (끼니별)
+  const handleSelectRestaurant = (dayIdx, mealType, restaurant) => {
+    const key = `${dayIdx}_${mealType}`; // "0_breakfast", "0_lunch", "0_dinner"
 
-    const newSelected = { ...selectedRestaurants };
+    setSelectedRestaurants((prev) => {
+      const newSelected = { ...prev };
 
-    if (newSelected[dayIdx]?.id === restaurant.id) {
-      // 이미 선택된 식당 클릭 시 해제
-      console.log(`❌ 선택 해제: ${dayIdx}일차`);
-      delete newSelected[dayIdx];
-      setSelectedRestaurants(newSelected);
-      localStorage.setItem(selectedRestaurantsKey, JSON.stringify(newSelected));
-    } else {
-      // 새 식당 선택 (하루에 하나만)
-      console.log(`✅ 새 선택: ${dayIdx}일차 - ${restaurant.name}`);
-      newSelected[dayIdx] = restaurant;
-      setSelectedRestaurants(newSelected);
-      localStorage.setItem(selectedRestaurantsKey, JSON.stringify(newSelected));
+      // 해당 끼니에 이미 선택된 식당 배열 가져오기 (새 배열로 복사)
+      const currentMealSelections = [...(newSelected[key] || [])];
 
-      console.log("💾 localStorage 저장 완료:", newSelected);
+      // 이미 선택된 식당인지 확인
+      const existingIndex = currentMealSelections.findIndex(
+        (r) => r.id === restaurant.id
+      );
 
-      // 다음 일차로 자동 이동
-      const allDayIndices = Object.keys(restaurantsByDay)
-        .map((idx) => parseInt(idx))
-        .sort((a, b) => a - b);
-      console.log("📅 전체 일차 목록:", allDayIndices);
+      if (existingIndex >= 0) {
+        // 선택 해제 - 불변성 유지
+        const updatedSelections = currentMealSelections.filter(
+          (_, idx) => idx !== existingIndex
+        );
+        console.log(
+          `❌ 선택 해제: ${dayIdx}일차 ${mealType} - ${restaurant.name}`
+        );
 
-      const currentIndex = allDayIndices.indexOf(dayIdx);
-      console.log(`📍 현재 인덱스: ${currentIndex}, dayIdx: ${dayIdx}`);
-
-      if (currentIndex !== -1 && currentIndex < allDayIndices.length - 1) {
-        const nextDayIdx = allDayIndices[currentIndex + 1];
-        console.log(`➡️ 다음 일차로 이동: ${nextDayIdx}일차`);
-
-        // 다음 날짜가 있으면 이동 (0.5초 딜레이)
-        setTimeout(() => {
-          setActiveDayIndex(nextDayIdx);
-          // 페이지 최상단으로 스크롤
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        }, 500);
+        // 배열이 비어있으면 키 삭제, 아니면 업데이트
+        if (updatedSelections.length === 0) {
+          delete newSelected[key];
+        } else {
+          newSelected[key] = updatedSelections;
+        }
       } else {
-        console.log("🏁 마지막 일차입니다. 이동하지 않습니다.");
+        // 선택 추가 (최대 5개)
+        if (currentMealSelections.length < 5) {
+          const updatedSelections = [...currentMealSelections, restaurant];
+          console.log(
+            `✅ 선택 추가: ${dayIdx}일차 ${mealType} - ${restaurant.name} (${updatedSelections.length}/5)`
+          );
+          newSelected[key] = updatedSelections;
+        } else {
+          alert("끼니당 최대 5개까지만 선택할 수 있습니다.");
+          return prev;
+        }
       }
-    }
+
+      // localStorage 저장
+      localStorage.setItem(selectedRestaurantsKey, JSON.stringify(newSelected));
+      console.log("💾 저장된 데이터:", newSelected);
+
+      return newSelected;
+    });
   };
 
   // 선택 완료
   const handleComplete = () => {
-    const totalDays = Object.keys(restaurantsByDay).length;
-    const selectedDays = Object.keys(selectedRestaurants).length;
-
     console.log("🎉 선택 완료 버튼 클릭");
-    console.log(`📊 전체: ${totalDays}일, 선택: ${selectedDays}일`);
-    console.log("선택된 식당:", selectedRestaurants);
+    console.log("💾 선택된 데이터:", selectedRestaurants);
 
-    if (selectedDays < totalDays) {
-      alert(
-        `아직 ${totalDays - selectedDays}개 날짜의 식당을 선택하지 않았습니다.`
-      );
+    // 선택된 항목이 하나라도 있으면 진행 가능
+    if (Object.keys(selectedRestaurants).length === 0) {
+      alert("최소 하나의 식당을 선택해주세요.");
       return;
     }
 
@@ -239,45 +221,17 @@ export default function FoodResultPage({ session, token, handleLogout }) {
     );
   }
 
-  // 렌더링 직전 데이터 확인
-  console.log("🎨 렌더링 시작");
-  console.log("🎨 restaurantsByDay state:", restaurantsByDay);
-  console.log("🎨 restaurantsByDay 키:", Object.keys(restaurantsByDay));
-  console.log("🎨 activeDayIndex:", activeDayIndex);
-
   const currentDayRestaurants = restaurantsByDay[activeDayIndex] || [];
-  console.log(
-    `🎨 현재 보여줄 식당 (${activeDayIndex}일차):`,
-    currentDayRestaurants.length,
-    "개"
-  );
-
   const filteredRestaurants =
     filterRating === 0
       ? currentDayRestaurants
       : currentDayRestaurants.filter((r) => r.rating >= filterRating);
 
-  const selectedRestaurant = selectedRestaurants[activeDayIndex];
+  // 현재 끼니의 선택된 식당들
+  const currentMealKey = `${activeDayIndex}_${activeMealType}`;
+  const currentMealSelections = selectedRestaurants[currentMealKey] || [];
+
   const totalDays = Object.keys(restaurantsByDay).length;
-  const selectedDays = Object.keys(selectedRestaurants).length;
-  const allSelected = selectedDays === totalDays;
-
-  console.log(`🎨 totalDays: ${totalDays}, selectedDays: ${selectedDays}`);
-
-  const topRestaurant =
-    currentDayRestaurants.length > 0
-      ? currentDayRestaurants.reduce((prev, current) =>
-          prev.rating > current.rating ? prev : current
-        )
-      : null;
-
-  const avgRating =
-    currentDayRestaurants.length > 0
-      ? (
-          currentDayRestaurants.reduce((sum, r) => sum + (r.rating || 0), 0) /
-          currentDayRestaurants.filter((r) => r.rating > 0).length
-        ).toFixed(1)
-      : 0;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
@@ -286,96 +240,136 @@ export default function FoodResultPage({ session, token, handleLogout }) {
       </header>
 
       <main className="container mx-auto px-6 py-8">
+        {/* 헤더 */}
         <div className="mb-6 flex justify-between items-center">
           <div>
-            <h1 className="text-3xl font-bold text-gray-800 mb-2">
-              🍽️ 식당 선택하기
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">
+              식당 선택하기
             </h1>
             <p className="text-gray-600">
-              {group.name} · 각 날짜별로 원하는 식당을 선택하세요
+              각 끼니별로 최대 5개까지 선택할 수 있습니다
             </p>
           </div>
-          <Button
-            variant="secondary"
-            onClick={() =>
-              navigate(routes.groupDetail.replace(":groupId", groupId))
-            }
-          >
-            <ArrowLeft className="w-5 h-5" />
-            그룹으로 돌아가기
+          <Button variant="primary" size="lg" onClick={handleComplete}>
+            선택 완료
+            <ChevronRight className="w-5 h-5 ml-2" />
           </Button>
         </div>
 
-        {/* 진행 상황 */}
-        <div className="bg-white rounded-xl p-6 border-2 border-indigo-200 shadow-lg mb-6">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-bold text-gray-800">
-                선택 진행 상황
-              </h2>
-              <p className="text-sm text-gray-600">
-                {selectedDays}/{totalDays}일 선택 완료
-              </p>
-            </div>
-            {allSelected && (
-              <Button variant="primary" size="lg" onClick={handleComplete}>
-                <Check className="w-5 h-5" />
-                선택 완료 - 최종 계획 보기
-              </Button>
-            )}
+        {/* 일차별 탭 */}
+        <div className="bg-white rounded-2xl p-4 border-2 border-indigo-200 shadow-lg mb-6">
+          <div className="flex space-x-2 border-b-2 border-gray-200 pb-2 mb-4 overflow-x-auto">
+            {Object.keys(restaurantsByDay)
+              .sort((a, b) => parseInt(a) - parseInt(b))
+              .map((dayIdx) => {
+                const idx = parseInt(dayIdx);
+                const dayLabel = idx + 1;
+
+                // 해당 일차의 모든 끼니 선택 개수 확인
+                const breakfastCount = (
+                  selectedRestaurants[`${idx}_breakfast`] || []
+                ).length;
+                const lunchCount = (selectedRestaurants[`${idx}_lunch`] || [])
+                  .length;
+                const dinnerCount = (selectedRestaurants[`${idx}_dinner`] || [])
+                  .length;
+                const totalSelected = breakfastCount + lunchCount + dinnerCount;
+
+                return (
+                  <button
+                    key={dayIdx}
+                    onClick={() => setActiveDayIndex(idx)}
+                    className={`px-6 py-3 font-bold transition-all whitespace-nowrap flex items-center gap-2 rounded-lg ${
+                      activeDayIndex === idx
+                        ? "bg-indigo-600 text-white shadow-lg"
+                        : "text-gray-600 hover:bg-indigo-50"
+                    }`}
+                  >
+                    <Calendar className="w-5 h-5" />
+                    {dayLabel}일차
+                    {totalSelected > 0 && (
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full ${
+                          activeDayIndex === idx
+                            ? "bg-white/20"
+                            : "bg-green-100 text-green-700"
+                        }`}
+                      >
+                        {totalSelected}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
           </div>
 
-          {/* 진행 바 */}
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div
-              className="bg-indigo-600 h-3 rounded-full transition-all duration-300"
-              style={{ width: `${(selectedDays / totalDays) * 100}%` }}
-            />
-          </div>
-        </div>
-
-        {/* 날짜 탭 */}
-        <div className="flex space-x-2 border-b-2 border-gray-200 mb-6 overflow-x-auto">
-          {(() => {
-            const keys = Object.keys(restaurantsByDay);
-            console.log("🏷️ 탭 렌더링 시작");
-            console.log("🏷️ restaurantsByDay의 키:", keys);
-            console.log("🏷️ 정렬 전:", keys);
-
-            const sortedKeys = keys.sort((a, b) => parseInt(a) - parseInt(b));
-            console.log("🏷️ 정렬 후:", sortedKeys);
-
-            return sortedKeys.map((dayIdx) => {
-              const idx = parseInt(dayIdx);
-              const isSelected = selectedRestaurants[dayIdx] !== undefined;
-              const dayLabel = idx + 1; // 0 -> 1일차, 1 -> 2일차
-
-              console.log(
-                `🏷️ 탭 생성: dayIdx=${dayIdx}, idx=${idx}, dayLabel=${dayLabel}일차`
-              );
+          {/* 끼니 선택 탭 */}
+          <div className="flex gap-2">
+            {MEAL_TYPES.map((meal) => {
+              const MealIcon = meal.icon;
+              const mealKey = `${activeDayIndex}_${meal.id}`;
+              const mealSelections = selectedRestaurants[mealKey] || [];
+              const isActive = activeMealType === meal.id;
 
               return (
                 <button
-                  key={dayIdx}
-                  onClick={() => {
-                    console.log(
-                      `🔄 탭 클릭: ${dayIdx}일차 (${dayLabel}일차로 표시)`
-                    );
-                    setActiveDayIndex(idx);
-                  }}
-                  className={`px-6 py-3 font-bold transition-colors whitespace-nowrap flex items-center gap-2 ${
-                    activeDayIndex === idx
-                      ? "border-b-4 border-indigo-600 text-indigo-600"
-                      : "text-gray-500 hover:text-indigo-500"
+                  key={meal.id}
+                  onClick={() => setActiveMealType(meal.id)}
+                  className={`flex-1 px-4 py-3 rounded-xl border-2 transition-all ${
+                    meal.id === "breakfast"
+                      ? isActive
+                        ? "border-orange-600 bg-orange-600 shadow-lg"
+                        : "border-orange-300 bg-orange-100"
+                      : meal.id === "lunch"
+                      ? isActive
+                        ? "border-yellow-600 bg-yellow-600 shadow-lg"
+                        : "border-yellow-300 bg-yellow-100"
+                      : isActive
+                      ? "border-indigo-600 bg-indigo-600 shadow-lg"
+                      : "border-indigo-300 bg-indigo-100"
                   }`}
                 >
-                  <Calendar className="w-5 h-5" />
-                  {dayLabel}일차
-                  {isSelected && <Check className="w-4 h-4 text-green-600" />}
+                  <div className="flex items-center justify-center gap-2">
+                    <MealIcon
+                      className={`w-5 h-5 ${
+                        isActive
+                          ? "text-white"
+                          : meal.id === "breakfast"
+                          ? "text-orange-600"
+                          : meal.id === "lunch"
+                          ? "text-yellow-600"
+                          : "text-indigo-600"
+                      }`}
+                    />
+                    <span
+                      className={`font-bold ${
+                        isActive
+                          ? "text-white"
+                          : meal.id === "breakfast"
+                          ? "text-orange-600"
+                          : meal.id === "lunch"
+                          ? "text-yellow-600"
+                          : "text-indigo-600"
+                      }`}
+                    >
+                      {meal.label}
+                    </span>
+                    {mealSelections.length > 0 && (
+                      <span
+                        className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                          isActive
+                            ? "bg-white/30 text-white"
+                            : "bg-green-100 text-green-700"
+                        }`}
+                      >
+                        {mealSelections.length}/5
+                      </span>
+                    )}
+                  </div>
                 </button>
               );
-            });
-          })()}
+            })}
+          </div>
         </div>
 
         {/* 현재 날짜 정보 */}
@@ -383,145 +377,223 @@ export default function FoodResultPage({ session, token, handleLogout }) {
           <div className="bg-indigo-50 rounded-lg p-4 mb-6 border-2 border-indigo-200">
             <div className="flex items-center gap-2">
               <MapPin className="w-5 h-5 text-indigo-600" />
-              <span className="font-bold text-indigo-900">
-                {activeDayIndex + 1}일차:{" "}
+              <span className="font-semibold text-gray-800">
                 {group.tripPlan.days[activeDayIndex].description}
               </span>
-              {selectedRestaurant && (
-                <span className="ml-auto px-3 py-1 bg-green-500 text-white rounded-full text-sm font-bold">
-                  ✓ {selectedRestaurant.name} 선택됨
-                </span>
-              )}
+              <span className="text-gray-600">
+                - {MEAL_TYPES.find((m) => m.id === activeMealType)?.label} 식당
+                선택 중
+              </span>
             </div>
           </div>
         )}
 
-        {/* 통계 카드 */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <InfoCard
-            title="추천 식당"
-            value={`${filteredRestaurants.length}개`}
-            icon={<MapPin />}
-            color="indigo"
-          />
-          <InfoCard
-            title="평균 별점"
-            value={avgRating > 0 ? `${avgRating}점` : "-"}
-            icon={<Star />}
-            color="green"
-          />
-          <InfoCard
-            title="최고 별점"
-            value={topRestaurant ? `${topRestaurant.rating}점` : "-"}
-            icon={<Trophy />}
-            color="purple"
-          />
-          <InfoCard
-            title="그룹 멤버"
-            value={`${group.members.length}명`}
-            icon={<TrendingUp />}
-            color="orange"
-          />
+        {/* 필터 */}
+        <div className="bg-white rounded-xl p-4 mb-6 border-2 border-indigo-200 shadow-lg">
+          <div className="flex items-center gap-4">
+            <Filter className="w-5 h-5 text-indigo-600" />
+            <span className="font-semibold text-gray-800">최소 별점:</span>
+            {[0, 3, 4, 4.5].map((rating) => (
+              <button
+                key={rating}
+                onClick={() => setFilterRating(rating)}
+                className={`px-4 py-2 rounded-lg border-2 transition-all ${
+                  filterRating === rating
+                    ? "border-indigo-600 bg-indigo-50 text-indigo-600"
+                    : "border-gray-300 text-gray-700 hover:border-indigo-400"
+                }`}
+              >
+                {rating === 0 ? "전체" : `⭐ ${rating}+`}
+              </button>
+            ))}
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* 필터 사이드바 */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-2xl p-6 border-2 border-indigo-200 shadow-lg sticky top-6">
-              <h2 className="text-lg font-bold text-gray-800 mb-4">필터</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium text-gray-700 mb-2 block">
-                    최소 별점
-                  </label>
-                  <select
-                    value={filterRating}
-                    onChange={(e) =>
-                      setFilterRating(parseFloat(e.target.value))
-                    }
-                    className="w-full px-3 py-2 border-2 border-indigo-200 rounded-lg focus:border-indigo-500 focus:outline-none"
-                  >
-                    <option value={0}>전체 보기</option>
-                    <option value={4.5}>4.5점 이상</option>
-                    <option value={4.0}>4.0점 이상</option>
-                    <option value={3.5}>3.5점 이상</option>
-                    <option value={3.0}>3.0점 이상</option>
-                  </select>
+        {/* 식당 목록 */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredRestaurants.map((restaurant, index) => {
+            // 현재 끼니 선택 여부
+            const isSelectedInCurrentMeal = currentMealSelections.some(
+              (r) => r.id === restaurant.id
+            );
+
+            // 모든 끼니에서 선택 여부 확인
+            const breakfastKey = `${activeDayIndex}_breakfast`;
+            const lunchKey = `${activeDayIndex}_lunch`;
+            const dinnerKey = `${activeDayIndex}_dinner`;
+
+            const isInBreakfast = (
+              selectedRestaurants[breakfastKey] || []
+            ).some((r) => r.id === restaurant.id);
+            const isInLunch = (selectedRestaurants[lunchKey] || []).some(
+              (r) => r.id === restaurant.id
+            );
+            const isInDinner = (selectedRestaurants[dinnerKey] || []).some(
+              (r) => r.id === restaurant.id
+            );
+
+            return (
+              <div
+                key={restaurant.id}
+                className={`bg-white rounded-2xl overflow-hidden border-2 shadow-lg transition-all ${
+                  isSelectedInCurrentMeal
+                    ? "border-green-500 ring-4 ring-green-200"
+                    : "border-gray-200 hover:border-indigo-400 hover:shadow-xl"
+                }`}
+              >
+                {/* 이미지 */}
+                <div
+                  className="relative h-48 cursor-pointer overflow-hidden"
+                  onClick={() =>
+                    handleSelectRestaurant(
+                      activeDayIndex,
+                      activeMealType,
+                      restaurant
+                    )
+                  }
+                >
+                  {restaurant.images[0] ? (
+                    <>
+                      <img
+                        src={restaurant.images[0]}
+                        alt={restaurant.name}
+                        className="w-full h-full object-cover"
+                      />
+                      {/* 그라데이션 오버레이 - 위쪽이 어둡고 아래가 밝음 */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-transparent"></div>
+                    </>
+                  ) : (
+                    <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                      <MapPin className="w-16 h-16 text-gray-400" />
+                    </div>
+                  )}
+
+                  {/* 끼니별 선택 체크 - 왼쪽 상단 */}
+                  <div className="absolute top-2 left-2 flex gap-1">
+                    {isInBreakfast && (
+                      <div className="bg-orange-500 text-white rounded-full p-1.5 shadow-lg">
+                        <Check className="w-4 h-4" />
+                      </div>
+                    )}
+                    {isInLunch && (
+                      <div className="bg-yellow-500 text-white rounded-full p-1.5 shadow-lg">
+                        <Check className="w-4 h-4" />
+                      </div>
+                    )}
+                    {isInDinner && (
+                      <div className="bg-indigo-500 text-white rounded-full p-1.5 shadow-lg">
+                        <Check className="w-4 h-4" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 끼니 표시 - 이미지 오른쪽 상단 */}
+                  <div className="absolute top-2 right-2 flex flex-col gap-1">
+                    {isInBreakfast && (
+                      <span className="text-xs font-bold bg-orange-500 text-white px-2 py-1 rounded shadow-lg">
+                        아침
+                      </span>
+                    )}
+                    {isInLunch && (
+                      <span className="text-xs font-bold bg-yellow-500 text-white px-2 py-1 rounded shadow-lg">
+                        점심
+                      </span>
+                    )}
+                    {isInDinner && (
+                      <span className="text-xs font-bold bg-indigo-500 text-white px-2 py-1 rounded shadow-lg">
+                        저녁
+                      </span>
+                    )}
+                  </div>
+
+                  {/* 별점 - 하단 */}
+                  <div className="absolute bottom-2 left-2 bg-black/70 text-white px-3 py-1 rounded-full flex items-center gap-1 shadow-lg">
+                    <Star className="w-4 h-4 text-yellow-400" />
+                    <span className="font-bold">
+                      {restaurant.rating || "N/A"}
+                    </span>
+                  </div>
                 </div>
 
-                <div className="pt-4 border-t border-gray-200">
-                  <p className="text-sm text-gray-600">
-                    현재 {filteredRestaurants.length}개의 식당이 표시되고
-                    있습니다.
+                {/* 정보 */}
+                <div className="p-4">
+                  {/* 제목 */}
+                  <h3 className="text-lg font-bold text-gray-800 truncate mb-2">
+                    {restaurant.name}
+                  </h3>
+
+                  <p className="text-sm text-gray-600 flex items-start gap-2 mb-3">
+                    <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                    <span className="line-clamp-2">
+                      {restaurant.location.address}
+                    </span>
                   </p>
-                </div>
 
-                {selectedRestaurant && (
-                  <div className="pt-4 border-t border-gray-200">
-                    <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-                      <p className="text-sm font-bold text-green-800 mb-1">
-                        선택된 식당
-                      </p>
-                      <p className="text-sm text-green-700">
-                        {selectedRestaurant.name}
-                      </p>
+                  {/* 버튼들 */}
+                  <div className="space-y-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(
+                          routes.foodDetail
+                            .replace(":groupId", groupId)
+                            .replace(":restaurantId", restaurant.id)
+                        );
+                      }}
+                      className="w-full"
+                    >
+                      상세보기
+                    </Button>
+
+                    <div className="grid grid-cols-2 gap-2">
                       <Button
-                        variant="secondary"
+                        variant="primary"
                         size="sm"
-                        onClick={() =>
-                          handleSelectRestaurant(
-                            activeDayIndex,
-                            selectedRestaurant
-                          )
-                        }
-                        className="w-full mt-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.open(
+                            `https://www.google.com/maps/place/?q=place_id:${restaurant.id}`,
+                            "_blank"
+                          );
+                        }}
+                        className="text-xs"
                       >
-                        선택 해제
+                        <ExternalLink className="w-3 h-3 mr-1" />
+                        지도
                       </Button>
+
+                      {restaurant.location?.lat && restaurant.location?.lng && (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            window.open(
+                              `https://www.google.com/maps/dir/?api=1&destination=${restaurant.location.lat},${restaurant.location.lng}`,
+                              "_blank"
+                            );
+                          }}
+                          className="text-xs"
+                        >
+                          <Navigation className="w-3 h-3 mr-1" />
+                          길찾기
+                        </Button>
+                      )}
                     </div>
                   </div>
-                )}
+                </div>
               </div>
-            </div>
-          </div>
-
-          {/* 식당 목록 */}
-          <div className="lg:col-span-3">
-            {filteredRestaurants.length === 0 ? (
-              <div className="bg-white rounded-2xl p-12 border-2 border-yellow-200 text-center">
-                <p className="text-xl text-gray-600">
-                  해당 조건의 식당이 없습니다.
-                  <br />
-                  필터를 조정해보세요.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {filteredRestaurants.map((restaurant) => {
-                  const isSelected = selectedRestaurant?.id === restaurant.id;
-
-                  return (
-                    <div
-                      key={restaurant.id}
-                      className={`transition-all ${
-                        isSelected ? "ring-4 ring-green-500 ring-offset-2" : ""
-                      }`}
-                    >
-                      <RestaurantCard
-                        restaurant={restaurant}
-                        onClick={() =>
-                          handleSelectRestaurant(activeDayIndex, restaurant)
-                        }
-                        showSelectButton={true}
-                        isSelected={isSelected}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+            );
+          })}
         </div>
+
+        {filteredRestaurants.length === 0 && (
+          <div className="text-center py-12 text-gray-600">
+            해당 조건의 식당이 없습니다.
+          </div>
+        )}
       </main>
     </div>
   );

@@ -74,6 +74,14 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
   const [group, setGroup] = useState(null);
   const [copied, setCopied] = useState(false);
 
+  // 페이지 마운트 시 인증 상태 확인
+  useEffect(() => {
+    console.log("📄 GroupDetailPage 마운트");
+    console.log("📄 session:", !!session);
+    console.log("📄 token:", !!token);
+    console.log("📄 groupId:", groupId);
+  }, []);
+
   useEffect(() => {
     if (token) {
       const result = getGroupById(token, groupId);
@@ -123,6 +131,15 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
 
   // 한 번에 모든 날짜 추천 받기
   const handleRequestRecommendation = () => {
+    console.log("🎯 식당 추천 받기 클릭");
+    console.log("🎯 token 존재:", !!token);
+    console.log("🎯 session 존재:", !!session);
+    console.log("🎯 groupId:", groupId);
+    console.log(
+      "🎯 membersWithoutPreference:",
+      membersWithoutPreference.length
+    );
+
     if (membersWithoutPreference.length > 0) {
       const memberNames = membersWithoutPreference
         .map((m) => m.nickname)
@@ -132,10 +149,14 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
       );
       return;
     }
+
+    const targetPath = routes.loading
+      .replace(":groupId", groupId)
+      .replace(":dayIndex", "all");
+    console.log("🎯 이동할 경로:", targetPath);
+
     // 모든 날짜를 한번에 처리하는 로딩 페이지로
-    navigate(
-      routes.loading.replace(":groupId", groupId).replace(":dayIndex", "all")
-    );
+    navigate(targetPath);
   };
 
   const isCreator = group.creatorId === session.user.id;
@@ -424,15 +445,33 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
                       <p className="text-sm text-gray-600 mb-4">
                         추천 식당 목록에서 원하는 식당을 선택하세요
                       </p>
-                      <Button
-                        variant="primary"
-                        size="lg"
-                        onClick={handleViewResults}
-                        className="w-full"
-                      >
-                        <Utensils className="w-5 h-5" />
-                        식당 선택하기
-                      </Button>
+                      <div className="flex flex-col gap-2">
+                        <Button
+                          variant="primary"
+                          size="lg"
+                          onClick={handleViewResults}
+                          className="w-full"
+                        >
+                          <Utensils className="w-5 h-5" />
+                          식당 선택하기
+                        </Button>
+
+                        {/* 선택된 식당이 있으면 최종 계획 보기 버튼 표시 */}
+                        {selectedDays > 0 && (
+                          <Button
+                            variant="secondary"
+                            size="lg"
+                            onClick={() =>
+                              navigate(
+                                routes.finalPlan.replace(":groupId", groupId)
+                              )
+                            }
+                            className="w-full"
+                          >
+                            최종 계획 보기 ({selectedDays}일 선택됨)
+                          </Button>
+                        )}
+                      </div>
                     </>
                   ) : (
                     <>
