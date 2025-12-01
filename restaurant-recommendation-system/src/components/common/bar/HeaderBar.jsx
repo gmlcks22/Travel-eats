@@ -38,13 +38,13 @@ export default function HeaderBar({ session, handleLogout }) {
         {session ? (
           <>
             {/* 로그인된 상태 */}
-            <button
+            {/* <button
               onClick={() => navigate(routes.home)}
               className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-indigo-100 transition-colors"
             >
               <Home className="w-5 h-5 text-indigo-600" />
               <span className="text-indigo-700">홈</span>
-            </button>
+            </button> */}
 
             <button
               onClick={() => navigate(routes.mypage)}
