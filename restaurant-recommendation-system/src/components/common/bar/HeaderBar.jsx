@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Home, User, LogOut, Utensils, LogIn, UserPlus } from "lucide-react";
 import routes from "@utils/constants/routes";
@@ -11,6 +11,24 @@ import routes from "@utils/constants/routes";
  */
 export default function HeaderBar({ session, handleLogout }) {
   const navigate = useNavigate();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // 외부 클릭 시 드롭다운 닫기
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target)
+      ) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [dropdownRef]);
 
   // 아바타 색상을 Tailwind 클래스로 매핑
   const COLOR_MAP = {
@@ -45,10 +63,10 @@ export default function HeaderBar({ session, handleLogout }) {
       {/* 네비게이션 메뉴 */}
       <nav className="flex items-center gap-4">
         {session ? (
-          <>
-            {/* 로그인된 상태 */}
+          <div className="relative" ref={dropdownRef}>
+            {/* 프로필 아바타 버튼 (드롭다운 토글) */}
             <button
-              onClick={() => navigate(routes.mypage)}
+              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className={`flex items-center justify-center w-10 h-10 rounded-full ${
                 COLOR_MAP[session.user.avatarColor || "indigo"]?.bg ||
                 "bg-indigo-600"
@@ -56,19 +74,40 @@ export default function HeaderBar({ session, handleLogout }) {
                 COLOR_MAP[session.user.avatarColor || "indigo"]?.hover ||
                 "hover:bg-indigo-700"
               } transition-colors`}
-              aria-label="마이페이지로 이동"
+              aria-label="사용자 메뉴 열기"
             >
               {session.user.nickname[0]}
             </button>
 
-            <button
-              onClick={onLogoutClick}
-              className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-              <span>로그아웃</span>
-            </button>
-          </>
+            {/* 드롭다운 메뉴 */}
+            {isDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-48 bg-white bg-opacity-90 rounded-md shadow-lg py-1 px-2 ring-1 ring-gray-200 ring-opacity-5 z-10">
+                <div className="px-4 py-2 text-sm font-semibold text-gray-800 border-b border-gray-200 rounded-t-md">
+                  {session.user.nickname}
+                </div>
+                <button
+                  onClick={() => {
+                    navigate(routes.mypage);
+                    setIsDropdownOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2 rounded-md"
+                >
+                  <User className="w-4 h-4" />
+                  <span>마이페이지</span>
+                </button>
+                <button
+                  onClick={() => {
+                    onLogoutClick();
+                    setIsDropdownOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-red-100 flex items-center gap-2 rounded-md"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>로그아웃</span>
+                </button>
+              </div>
+            )}
+          </div>
         ) : (
           <>
             {/* 로그인되지 않은 상태 */}
