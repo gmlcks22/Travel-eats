@@ -45,7 +45,22 @@ export default function LoadingPage({ token }) {
 
   useEffect(() => {
     const processRecommendation = async () => {
+      console.log("🔐 LoadingPage 시작");
+      console.log("🔐 현재 URL:", window.location.href);
+      console.log("🔐 token 존재 여부:", !!token);
+      console.log("🔐 groupId:", groupId);
+      console.log("🔐 dayIndex:", dayIndex);
+
+      // 필수 파라미터 검증
+      if (!groupId || !dayIndex) {
+        console.error("❌ 필수 파라미터 누락!");
+        alert("잘못된 접근입니다.");
+        navigate(routes.home);
+        return;
+      }
+
       if (!token) {
+        console.error("❌ token이 없습니다!");
         alert("인증 정보가 없습니다. 다시 로그인해주세요.");
         navigate(routes.login);
         return;
@@ -78,9 +93,25 @@ export default function LoadingPage({ token }) {
 
         // 2. dayIndex가 "all"이면 모든 날짜 처리
         const isAllDays = dayIndex === "all";
+
+        console.log("📅 날짜 처리 정보:");
+        console.log("  dayIndex:", dayIndex);
+        console.log("  isAllDays:", isAllDays);
+        console.log("  tripDays.length:", tripDays.length);
+        console.log(
+          "  tripDays:",
+          tripDays.map((d, i) => `${i}일차: ${d.description}`)
+        );
+
         const daysToProcess = isAllDays
           ? tripDays
           : [tripDays[parseInt(dayIndex)]];
+
+        console.log("  daysToProcess.length:", daysToProcess.length);
+        console.log(
+          "  daysToProcess:",
+          daysToProcess.map((d, i) => `${i}: ${d.description}`)
+        );
 
         if (!isAllDays && !tripDays[dayIndex]) {
           throw new Error("해당 날짜의 여행 계획이 없습니다.");
@@ -100,7 +131,12 @@ export default function LoadingPage({ token }) {
 
         for (let i = 0; i < daysToProcess.length; i++) {
           const day = daysToProcess[i];
+          // ✅ 수정: isAllDays일 때 i를 사용, 아니면 parseInt(dayIndex)
           const dayIdx = isAllDays ? i : parseInt(dayIndex);
+
+          console.log(
+            `🔄 처리 중: i=${i}, dayIdx=${dayIdx}, day=${day.description}`
+          );
 
           setProgress(30 + (i / daysToProcess.length) * 40);
           setMessage(
@@ -138,13 +174,27 @@ export default function LoadingPage({ token }) {
             });
           }
 
+          console.log(`✅ ${dayIdx}일차 저장: ${filteredPlaces.length}개 식당`);
           allRestaurantsByDay[dayIdx] = filteredPlaces;
         }
+
+        console.log("📦 최종 저장 데이터:", Object.keys(allRestaurantsByDay));
 
         // 4. 결과 저장 (90%)
         setProgress(90);
         setMessage("추천 결과를 저장하는 중...");
         await sleep(500);
+
+        // 저장 전 데이터 검증
+        console.log("=== 저장 전 데이터 검증 ===");
+        console.log("allRestaurantsByDay:", allRestaurantsByDay);
+        console.log("키 목록:", Object.keys(allRestaurantsByDay));
+        console.log("여행 일수:", tripDays.length);
+
+        // 각 키의 데이터 개수 확인
+        Object.keys(allRestaurantsByDay).forEach((key) => {
+          console.log(`  [${key}]: ${allRestaurantsByDay[key].length}개 식당`);
+        });
 
         // 기존 restaurants에 날짜별로 저장
         const updateResult = updateGroup(token, groupId, {
@@ -156,6 +206,12 @@ export default function LoadingPage({ token }) {
         if (!updateResult.success) {
           throw new Error("결과 저장 실패: " + updateResult.message);
         }
+
+        console.log("✅ 저장 완료:", updateResult.group.restaurantsByDay);
+        console.log(
+          "✅ 저장된 키:",
+          Object.keys(updateResult.group.restaurantsByDay)
+        );
 
         // 5. 완료 (100%)
         setProgress(100);

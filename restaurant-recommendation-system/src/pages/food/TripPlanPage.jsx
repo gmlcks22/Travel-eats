@@ -201,11 +201,26 @@ export default function TripPlanPage({ session, token, handleLogout }) {
       return;
     }
 
+    console.log("💾 여행 계획 저장 중...");
+    console.log("💾 기존 restaurantsByDay 삭제");
+    console.log("💾 기존 restaurants 삭제");
+
+    // 여행 계획 저장 시 기존 식당 추천 데이터 초기화
     const tripPlan = { days: tripDays };
-    const result = updateGroup(token, groupId, { tripPlan });
+    const result = updateGroup(token, groupId, {
+      tripPlan,
+      restaurantsByDay: null, // 초기화
+      restaurants: null, // 초기화
+      lastRecommendation: null, // 초기화
+    });
 
     if (result.success) {
-      alert("여행 계획이 저장되었습니다.");
+      // localStorage에 저장된 선택된 식당도 초기화
+      const selectedRestaurantsKey = `selectedRestaurants_${groupId}`;
+      localStorage.removeItem(selectedRestaurantsKey);
+      console.log("💾 localStorage 선택 데이터 삭제:", selectedRestaurantsKey);
+
+      alert("여행 계획이 저장되었습니다.\n식당 추천을 다시 받아주세요.");
       navigate(routes.groupDetail.replace(":groupId", groupId));
     } else {
       alert(`저장 실패: ${result.message}`);

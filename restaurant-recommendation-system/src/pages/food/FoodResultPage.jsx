@@ -69,20 +69,33 @@ export default function FoodResultPage({ session, token, handleLogout }) {
       if (result.success) {
         const groupData = result.group;
 
+        console.log("🔍 그룹 데이터 확인:", {
+          hasRestaurantsByDay: !!groupData.restaurantsByDay,
+          hasRestaurants: !!groupData.restaurants,
+          tripDaysLength: groupData.tripPlan?.days?.length,
+        });
+
         // 새로운 구조 restaurantsByDay 우선, 없으면 기존 restaurants 사용
         let restaurantsData = {};
 
-        if (groupData.restaurantsByDay) {
+        if (
+          groupData.restaurantsByDay &&
+          Object.keys(groupData.restaurantsByDay).length > 0
+        ) {
           // 새 구조 사용
           restaurantsData = groupData.restaurantsByDay;
-          console.log("📍 restaurantsByDay 로드:", restaurantsData);
+          console.log("📍 restaurantsByDay 로드 성공");
+          console.log("📍 원본 데이터:", restaurantsData);
+          console.log("📍 키 목록:", Object.keys(restaurantsData));
+          console.log("📍 키 타입:", typeof Object.keys(restaurantsData)[0]);
         } else if (groupData.restaurants && groupData.restaurants.length > 0) {
           // 하위 호환성: 기존 restaurants를 0일차로 할당
           restaurantsData = { 0: groupData.restaurants };
-          console.log("📍 기존 restaurants를 0일차로 변환:", restaurantsData);
+          console.log("📍 기존 restaurants를 0일차로 변환");
         }
 
         if (Object.keys(restaurantsData).length === 0) {
+          console.error("❌ restaurantsData가 비어있음!");
           alert("아직 추천 결과가 없습니다. 식당 추천을 먼저 받아주세요.");
           navigate(routes.groupDetail.replace(":groupId", groupId));
           return;
@@ -98,18 +111,44 @@ export default function FoodResultPage({ session, token, handleLogout }) {
 
         if (tripDaysCount !== recommendedDaysCount) {
           console.warn("⚠️ 여행 일수와 추천 결과 일수가 다릅니다!");
+          console.warn("여행 계획을 다시 확인하거나 추천을 다시 받으세요.");
         }
 
         // 데이터 변환
         const adaptedRestaurantsByDay = {};
         for (const dayIdx in restaurantsData) {
-          adaptedRestaurantsByDay[dayIdx] = restaurantsData[dayIdx].map(
-            adaptPlaceToRestaurant
+          const dayRestaurants = restaurantsData[dayIdx];
+          console.log(
+            `🍽️ [${dayIdx}]일차 변환 중: ${dayRestaurants?.length || 0}개 식당`
           );
+
+          if (Array.isArray(dayRestaurants) && dayRestaurants.length > 0) {
+            adaptedRestaurantsByDay[dayIdx] = dayRestaurants.map(
+              adaptPlaceToRestaurant
+            );
+          } else {
+            console.warn(
+              `⚠️ [${dayIdx}]일차 데이터가 비어있거나 배열이 아닙니다.`
+            );
+          }
         }
+
+        console.log("✅ 최종 변환 완료");
+        console.log(
+          "✅ adaptedRestaurantsByDay 키:",
+          Object.keys(adaptedRestaurantsByDay)
+        );
+
+        // state 설정 직전 로그
+        console.log(
+          "🎯 setRestaurantsByDay 호출 직전:",
+          adaptedRestaurantsByDay
+        );
 
         setGroup(groupData);
         setRestaurantsByDay(adaptedRestaurantsByDay);
+
+        console.log("🎯 state 설정 완료");
 
         // localStorage에서 선택된 식당 로드
         const saved = localStorage.getItem(selectedRestaurantsKey);
@@ -200,7 +239,19 @@ export default function FoodResultPage({ session, token, handleLogout }) {
     );
   }
 
+  // 렌더링 직전 데이터 확인
+  console.log("🎨 렌더링 시작");
+  console.log("🎨 restaurantsByDay state:", restaurantsByDay);
+  console.log("🎨 restaurantsByDay 키:", Object.keys(restaurantsByDay));
+  console.log("🎨 activeDayIndex:", activeDayIndex);
+
   const currentDayRestaurants = restaurantsByDay[activeDayIndex] || [];
+  console.log(
+    `🎨 현재 보여줄 식당 (${activeDayIndex}일차):`,
+    currentDayRestaurants.length,
+    "개"
+  );
+
   const filteredRestaurants =
     filterRating === 0
       ? currentDayRestaurants
@@ -210,6 +261,8 @@ export default function FoodResultPage({ session, token, handleLogout }) {
   const totalDays = Object.keys(restaurantsByDay).length;
   const selectedDays = Object.keys(selectedRestaurants).length;
   const allSelected = selectedDays === totalDays;
+
+  console.log(`🎨 totalDays: ${totalDays}, selectedDays: ${selectedDays}`);
 
   const topRestaurant =
     currentDayRestaurants.length > 0
@@ -283,12 +336,23 @@ export default function FoodResultPage({ session, token, handleLogout }) {
 
         {/* 날짜 탭 */}
         <div className="flex space-x-2 border-b-2 border-gray-200 mb-6 overflow-x-auto">
-          {Object.keys(restaurantsByDay)
-            .sort((a, b) => parseInt(a) - parseInt(b))
-            .map((dayIdx) => {
+          {(() => {
+            const keys = Object.keys(restaurantsByDay);
+            console.log("🏷️ 탭 렌더링 시작");
+            console.log("🏷️ restaurantsByDay의 키:", keys);
+            console.log("🏷️ 정렬 전:", keys);
+
+            const sortedKeys = keys.sort((a, b) => parseInt(a) - parseInt(b));
+            console.log("🏷️ 정렬 후:", sortedKeys);
+
+            return sortedKeys.map((dayIdx) => {
               const idx = parseInt(dayIdx);
               const isSelected = selectedRestaurants[dayIdx] !== undefined;
               const dayLabel = idx + 1; // 0 -> 1일차, 1 -> 2일차
+
+              console.log(
+                `🏷️ 탭 생성: dayIdx=${dayIdx}, idx=${idx}, dayLabel=${dayLabel}일차`
+              );
 
               return (
                 <button
@@ -310,7 +374,8 @@ export default function FoodResultPage({ session, token, handleLogout }) {
                   {isSelected && <Check className="w-4 h-4 text-green-600" />}
                 </button>
               );
-            })}
+            });
+          })()}
         </div>
 
         {/* 현재 날짜 정보 */}

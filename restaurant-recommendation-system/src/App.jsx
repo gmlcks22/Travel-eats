@@ -22,6 +22,7 @@ import FoodPreferencePage from "@pages/food/FoodPreferencePage";
 import LoadingPage from "@pages/food/LoadingPage";
 import FoodResultPage from "@pages/food/FoodResultPage";
 import FoodDetailPage from "@pages/food/FoodDetailPage";
+import FinalPlanPage from "@pages/food/FinalPlanPage";
 import MyPage from "@pages/mypage/MyPage";
 import MyGroupsPage from "@pages/mypage/MyGroupsPage";
 import MyPageEdit from "@pages/mypage/MyPageEdit";
@@ -196,6 +197,14 @@ function App() {
             element={
               <ProtectedRoute session={session}>
                 <FoodDetailPage {...commonPageProps} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path={routes.finalPlan}
+            element={
+              <ProtectedRoute session={session}>
+                <FinalPlanPage {...commonPageProps} />
               </ProtectedRoute>
             }
           />
