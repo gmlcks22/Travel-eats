@@ -46,12 +46,6 @@ export default function TripPlanPage({ session, token, handleLogout }) {
   const [autocomplete, setAutocomplete] = useState(null);
   const [searchValue, setSearchValue] = useState("");
 
-  const [map, setMap] = useState(null);
-  const onLoadMap = useCallback((mapInstance) => setMap(mapInstance), []);
-  const onUnmountMap = useCallback(() => setMap(null), []);
-
-  const circleRef = useRef(null);
-
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: API_KEY || "",
