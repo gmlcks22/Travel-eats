@@ -5,7 +5,7 @@ import Button from "@common/button/Button";
 import { GroupCard, InfoCard } from "@components/common/card/Card";
 import routes from "@utils/constants/routes";
 import { getUserGroups, leaveGroup, deleteGroup } from "@utils/helpers/storage";
-import { User, Users, Settings, Heart } from "lucide-react";
+import { User, Users, Settings, Heart, LogOut } from "lucide-react";
 
 /**
  * 마이페이지
@@ -68,6 +68,13 @@ export default function MyPage({ session, token, handleLogout }) {
     });
   };
 
+  // 로그아웃 확인 및 처리
+  const onLogoutClick = () => {
+    if (window.confirm("로그아웃 하시겠습니까?")) {
+      handleLogout();
+    }
+  };
+
   if (!session) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -103,15 +110,26 @@ export default function MyPage({ session, token, handleLogout }) {
                   </p>
                 </div>
               </div>
-              <Button
-                variant="secondary"
-                size="md"
-                onClick={() => navigate(routes.mypageEdit)}
-                className="flex items-center gap-2"
-              >
-                <Settings className="w-5 h-5" />
-                정보 수정
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={() => navigate(routes.mypageEdit)}
+                  className="flex items-center gap-2"
+                >
+                  <Settings className="w-5 h-5" />
+                  정보 수정
+                </Button>
+                <Button
+                  variant="danger"
+                  size="md"
+                  onClick={onLogoutClick}
+                  className="flex items-center gap-2"
+                >
+                  <LogOut className="w-5 h-5" />
+                  로그아웃
+                </Button>
+              </div>
             </div>
           </div>
 
