@@ -16,16 +16,32 @@ import {
   Sunset,
   ExternalLink,
   Navigation,
+  DollarSign,
 } from "lucide-react";
 
 // Google Place를 우리 Restaurant 형식으로 변환
 const adaptPlaceToRestaurant = (place) => {
+  const getPriceLabel = (priceLevel) => {
+    const labels = {
+      0: "무료",
+      1: "저렴 (~10,000원)",
+      2: "보통 (10,000~30,000원)",
+      3: "비싼 (30,000~60,000원)",
+      4: "고급 (60,000원+)",
+    };
+    return priceLevel !== null && priceLevel !== undefined 
+      ? labels[priceLevel] 
+      : "가격 정보 없음";
+  };
+
   return {
     id: place.place_id,
     name: place.name,
     category: place.types?.[0] || "restaurant",
     rating: place.rating || 0,
     user_ratings_total: place.user_ratings_total || 0,
+    priceLevel: place.price_level ?? null,
+    priceLabel: getPriceLabel(place.price_level),
     location: {
       address: place.vicinity || place.formatted_address || "",
       lat: place.geometry?.location?.lat || 0,
@@ -83,8 +99,9 @@ export default function FoodResultPage({ session, token, handleLogout }) {
   const [restaurantsByDay, setRestaurantsByDay] = useState({});
   const [selectedRestaurants, setSelectedRestaurants] = useState({});
   const [activeDayIndex, setActiveDayIndex] = useState(0);
-  const [activeMealType, setActiveMealType] = useState("breakfast"); // 현재 선택 중인 끼니
+  const [activeMealType, setActiveMealType] = useState("breakfast");
   const [filterRating, setFilterRating] = useState(0);
+  const [filterPrice, setFilterPrice] = useState(0); // 0 = 전체
 
   const selectedRestaurantsKey = `selectedRestaurants_${groupId}`;
 
@@ -105,7 +122,6 @@ export default function FoodResultPage({ session, token, handleLogout }) {
         tripDaysLength: groupData.tripPlan?.days?.length,
       });
 
-      // 새로운 구조 restaurantsByDay 우선, 없으면 기존 restaurants 사용
       let restaurantsData = {};
 
       if (
@@ -125,7 +141,6 @@ export default function FoodResultPage({ session, token, handleLogout }) {
         return;
       }
 
-      // 데이터 변환
       const adaptedRestaurantsByDay = {};
       for (const dayIdx in restaurantsData) {
         const dayRestaurants = restaurantsData[dayIdx];
@@ -139,7 +154,6 @@ export default function FoodResultPage({ session, token, handleLogout }) {
       setGroup(groupData);
       setRestaurantsByDay(adaptedRestaurantsByDay);
 
-      // localStorage에서 선택된 식당 로드
       const saved = localStorage.getItem(selectedRestaurantsKey);
       if (saved) {
         setSelectedRestaurants(JSON.parse(saved));
@@ -147,23 +161,17 @@ export default function FoodResultPage({ session, token, handleLogout }) {
     }
   }, [groupId, token, navigate, selectedRestaurantsKey]);
 
-  // 식당 선택/해제 (끼니별)
   const handleSelectRestaurant = (dayIdx, mealType, restaurant) => {
-    const key = `${dayIdx}_${mealType}`; // "0_breakfast", "0_lunch", "0_dinner"
+    const key = `${dayIdx}_${mealType}`;
 
     setSelectedRestaurants((prev) => {
       const newSelected = { ...prev };
-
-      // 해당 끼니에 이미 선택된 식당 배열 가져오기 (새 배열로 복사)
       const currentMealSelections = [...(newSelected[key] || [])];
-
-      // 이미 선택된 식당인지 확인
       const existingIndex = currentMealSelections.findIndex(
         (r) => r.id === restaurant.id
       );
 
       if (existingIndex >= 0) {
-        // 선택 해제 - 불변성 유지
         const updatedSelections = currentMealSelections.filter(
           (_, idx) => idx !== existingIndex
         );
@@ -171,14 +179,12 @@ export default function FoodResultPage({ session, token, handleLogout }) {
           `❌ 선택 해제: ${dayIdx}일차 ${mealType} - ${restaurant.name}`
         );
 
-        // 배열이 비어있으면 키 삭제, 아니면 업데이트
         if (updatedSelections.length === 0) {
           delete newSelected[key];
         } else {
           newSelected[key] = updatedSelections;
         }
       } else {
-        // 선택 추가 (최대 5개)
         if (currentMealSelections.length < 5) {
           const updatedSelections = [...currentMealSelections, restaurant];
           console.log(
@@ -191,7 +197,6 @@ export default function FoodResultPage({ session, token, handleLogout }) {
         }
       }
 
-      // localStorage 저장
       localStorage.setItem(selectedRestaurantsKey, JSON.stringify(newSelected));
       console.log("💾 저장된 데이터:", newSelected);
 
@@ -199,12 +204,10 @@ export default function FoodResultPage({ session, token, handleLogout }) {
     });
   };
 
-  // 선택 완료
   const handleComplete = () => {
     console.log("🎉 선택 완료 버튼 클릭");
     console.log("💾 선택된 데이터:", selectedRestaurants);
 
-    // 선택된 항목이 하나라도 있으면 진행 가능
     if (Object.keys(selectedRestaurants).length === 0) {
       alert("최소 하나의 식당을 선택해주세요.");
       return;
@@ -222,12 +225,18 @@ export default function FoodResultPage({ session, token, handleLogout }) {
   }
 
   const currentDayRestaurants = restaurantsByDay[activeDayIndex] || [];
-  const filteredRestaurants =
-    filterRating === 0
-      ? currentDayRestaurants
-      : currentDayRestaurants.filter((r) => r.rating >= filterRating);
+  
+  // 필터링 (별점 + 가격)
+  let filteredRestaurants = currentDayRestaurants;
+  
+  if (filterRating > 0) {
+    filteredRestaurants = filteredRestaurants.filter((r) => r.rating >= filterRating);
+  }
+  
+  if (filterPrice > 0) {
+    filteredRestaurants = filteredRestaurants.filter((r) => r.priceLevel === filterPrice);
+  }
 
-  // 현재 끼니의 선택된 식당들
   const currentMealKey = `${activeDayIndex}_${activeMealType}`;
   const currentMealSelections = selectedRestaurants[currentMealKey] || [];
 
@@ -265,7 +274,6 @@ export default function FoodResultPage({ session, token, handleLogout }) {
                 const idx = parseInt(dayIdx);
                 const dayLabel = idx + 1;
 
-                // 해당 일차의 모든 끼니 선택 개수 확인
                 const breakfastCount = (
                   selectedRestaurants[`${idx}_breakfast`] || []
                 ).length;
@@ -390,34 +398,117 @@ export default function FoodResultPage({ session, token, handleLogout }) {
 
         {/* 필터 */}
         <div className="bg-white rounded-xl p-4 mb-6 border-2 border-indigo-200 shadow-lg">
-          <div className="flex items-center gap-4">
-            <Filter className="w-5 h-5 text-indigo-600" />
-            <span className="font-semibold text-gray-800">최소 별점:</span>
-            {[0, 3, 4, 4.5].map((rating) => (
-              <button
-                key={rating}
-                onClick={() => setFilterRating(rating)}
-                className={`px-4 py-2 rounded-lg border-2 transition-all ${
-                  filterRating === rating
-                    ? "border-indigo-600 bg-indigo-50 text-indigo-600"
-                    : "border-gray-300 text-gray-700 hover:border-indigo-400"
-                }`}
-              >
-                {rating === 0 ? "전체" : `⭐ ${rating}+`}
-              </button>
-            ))}
+          <div className="space-y-4">
+            {/* 별점 필터 */}
+            <div>
+              <div className="flex items-center gap-2">
+                <Filter className="w-4 h-4 text-indigo-600" />
+                <span className="font-semibold text-gray-800 text-sm">최소 별점:</span>
+                <div className="flex gap-2">
+                  {[0, 3, 4, 4.5].map((rating) => (
+                    <button
+                      key={rating}
+                      onClick={() => setFilterRating(rating)}
+                      className={`px-3 py-1.5 rounded-lg border-2 transition-all text-sm ${
+                        filterRating === rating
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-600 font-bold"
+                          : "border-gray-300 text-gray-700 hover:border-indigo-400"
+                      }`}
+                    >
+                      {rating === 0 ? "전체" : `⭐ ${rating}+`}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* 가격대 필터 - 슬라이더 */}
+            <div className="pb-2">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-green-600" />
+                <span className="font-semibold text-gray-800 text-sm">가격대 필터:</span>
+                
+                {/* 슬라이더 - 옆에 배치 */}
+                <div className="flex-1 max-w-md">
+                  <div className="relative pt-2 pb-6">
+                    {/* 배경 트랙 */}
+                    <div className="absolute top-1/2 left-0 right-0 h-1.5 bg-gray-200 rounded-full -translate-y-1/2" />
+                    
+                    {/* 하이라이트 - 전체일 때는 표시 안 함 */}
+                    {filterPrice > 0 && (
+                      <div 
+                        className={`
+                          absolute top-1/2 h-1.5 rounded-full -translate-y-1/2 transition-all
+                          ${filterPrice === 1 ? "bg-green-500" : ""}
+                          ${filterPrice === 2 ? "bg-blue-500" : ""}
+                          ${filterPrice === 3 ? "bg-orange-500" : ""}
+                          ${filterPrice === 4 ? "bg-purple-500" : ""}
+                        `}
+                        style={{
+                          left: '0%',
+                          right: filterPrice === 1 ? '75%' : 
+                                 filterPrice === 2 ? '50%' : 
+                                 filterPrice === 3 ? '25%' : '0%',
+                        }}
+                      />
+                    )}
+
+                    {/* 슬라이더 */}
+                    <input
+                      type="range"
+                      min="0"
+                      max="4"
+                      step="1"
+                      value={filterPrice}
+                      onChange={(e) => setFilterPrice(parseInt(e.target.value))}
+                      className="absolute top-1/2 left-0 right-0 w-full -translate-y-1/2 appearance-none bg-transparent pointer-events-auto cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-indigo-600 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md hover:[&::-webkit-slider-thumb]:scale-110 [&::-webkit-slider-thumb]:transition-transform [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-2 [&::-moz-range-thumb]:border-indigo-600 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:shadow-md hover:[&::-moz-range-thumb]:scale-110 [&::-moz-range-thumb]:transition-transform"
+                      style={{ zIndex: 5 }}
+                    />
+
+                    {/* 눈금 표시 - 더 위로 (슬라이더와 하단 중간) */}
+                    <div className="absolute bottom-2 left-0 right-0">
+                      <div className="relative flex">
+                        <div className="absolute left-0">
+                          <span className={`text-xs font-medium ${filterPrice === 0 ? 'text-indigo-700' : 'text-gray-500'}`}>
+                            전체
+                          </span>
+                        </div>
+                        <div className="absolute left-1/4 -translate-x-1/2">
+                          <span className={`text-sm font-bold ${filterPrice === 1 ? 'text-green-700' : 'text-gray-600'}`}>
+                            $
+                          </span>
+                        </div>
+                        <div className="absolute left-1/2 -translate-x-1/2">
+                          <span className={`text-sm font-bold ${filterPrice === 2 ? 'text-blue-700' : 'text-gray-600'}`}>
+                            $$
+                          </span>
+                        </div>
+                        <div className="absolute left-3/4 -translate-x-1/2">
+                          <span className={`text-sm font-bold ${filterPrice === 3 ? 'text-orange-700' : 'text-gray-600'}`}>
+                            $$$
+                          </span>
+                        </div>
+                        <div className="absolute right-0">
+                          <span className={`text-sm font-bold ${filterPrice === 4 ? 'text-purple-700' : 'text-gray-600'}`}>
+                            $$$$
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* 식당 목록 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredRestaurants.map((restaurant, index) => {
-            // 현재 끼니 선택 여부
             const isSelectedInCurrentMeal = currentMealSelections.some(
               (r) => r.id === restaurant.id
             );
 
-            // 모든 끼니에서 선택 여부 확인
             const breakfastKey = `${activeDayIndex}_breakfast`;
             const lunchKey = `${activeDayIndex}_lunch`;
             const dinnerKey = `${activeDayIndex}_dinner`;
@@ -459,7 +550,6 @@ export default function FoodResultPage({ session, token, handleLogout }) {
                         alt={restaurant.name}
                         className="w-full h-full object-cover"
                       />
-                      {/* 그라데이션 오버레이 - 위쪽이 어둡고 아래가 밝음 */}
                       <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-transparent"></div>
                     </>
                   ) : (
@@ -506,18 +596,27 @@ export default function FoodResultPage({ session, token, handleLogout }) {
                     )}
                   </div>
 
-                  {/* 별점 - 하단 */}
-                  <div className="absolute bottom-2 left-2 bg-black/70 text-white px-3 py-1 rounded-full flex items-center gap-1 shadow-lg">
-                    <Star className="w-4 h-4 text-yellow-400" />
-                    <span className="font-bold">
-                      {restaurant.rating || "N/A"}
-                    </span>
+                  {/* 별점 & 가격 - 하단 */}
+                  <div className="absolute bottom-2 left-2 right-2 flex justify-between">
+                    <div className="bg-black/70 text-white px-3 py-1 rounded-full flex items-center gap-1 shadow-lg">
+                      <Star className="w-4 h-4 text-yellow-400" />
+                      <span className="font-bold">
+                        {restaurant.rating || "N/A"}
+                      </span>
+                    </div>
+                    {restaurant.priceLevel !== null && (
+                      <div className="bg-black/70 text-white px-3 py-1 rounded-full flex items-center gap-1 shadow-lg">
+                        <DollarSign className="w-4 h-4" />
+                        <span className="font-bold text-xs">
+                          {"$".repeat(restaurant.priceLevel || 1)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
                 {/* 정보 */}
                 <div className="p-4">
-                  {/* 제목 */}
                   <h3 className="text-lg font-bold text-gray-800 truncate mb-2">
                     {restaurant.name}
                   </h3>
