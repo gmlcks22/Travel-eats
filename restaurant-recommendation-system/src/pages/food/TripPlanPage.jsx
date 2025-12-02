@@ -3,7 +3,6 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   GoogleMap,
   useJsApiLoader,
-  Circle,
   Autocomplete,
 } from "@react-google-maps/api";
 import HeaderBar from "@common/bar/HeaderBar";
@@ -45,8 +44,9 @@ export default function TripPlanPage({ session, token, handleLogout }) {
   const [autocomplete, setAutocomplete] = useState(null);
   const [searchValue, setSearchValue] = useState("");
 
-  // useRef로 마커 관리 (상태가 아닌 참조로)
+  // useRef로 마커와 Circle 관리 (상태가 아닌 참조로)
   const markerRef = useRef(null);
+  const circleRef = useRef(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: API_KEY || "",
@@ -76,7 +76,7 @@ export default function TripPlanPage({ session, token, handleLogout }) {
     }
   }, [groupId, token, navigate]);
 
-  // 마커 업데이트 (AdvancedMarkerElement 사용) - 수정된 버전
+  // 마커 및 Circle 업데이트
   useEffect(() => {
     if (map && isLoaded && window.google?.maps?.marker?.AdvancedMarkerElement) {
       const currentDay = tripDays[activeDayIndex];
@@ -87,8 +87,15 @@ export default function TripPlanPage({ session, token, handleLogout }) {
         markerRef.current = null;
       }
 
-      // 새 마커 생성
+      // 기존 Circle 제거
+      if (circleRef.current) {
+        circleRef.current.setMap(null);
+        circleRef.current = null;
+      }
+
+      // 새 마커 및 Circle 생성
       if (currentDay?.location) {
+        // 마커 생성
         const newMarker = new window.google.maps.marker.AdvancedMarkerElement({
           map: map,
           position: currentDay.location,
@@ -96,11 +103,31 @@ export default function TripPlanPage({ session, token, handleLogout }) {
         });
         markerRef.current = newMarker;
 
+        // Circle 생성
+        const newCircle = new window.google.maps.Circle({
+          map: map,
+          center: currentDay.location,
+          radius: currentDay.radius,
+          strokeColor: "#818cf8",
+          strokeOpacity: 0.8,
+          strokeWeight: 2,
+          fillColor: "#c7d2fe",
+          fillOpacity: 0.35,
+        });
+        circleRef.current = newCircle;
+
         // 지도 중심을 마커 위치로 이동 (부드럽게)
         map.panTo(currentDay.location);
       }
     }
-  }, [map, isLoaded, activeDayIndex, tripDays]);
+  }, [map, isLoaded, activeDayIndex, tripDays[activeDayIndex]?.location]);
+
+  // 반경 변경 시 Circle 크기만 업데이트
+  useEffect(() => {
+    if (circleRef.current && tripDays[activeDayIndex]?.location) {
+      circleRef.current.setRadius(tripDays[activeDayIndex].radius);
+    }
+  }, [tripDays[activeDayIndex]?.radius]);
 
   // 날짜 수 변경 시
   const handleNumDaysChange = (newNumDays) => {
@@ -234,12 +261,16 @@ export default function TripPlanPage({ session, token, handleLogout }) {
     }
   };
 
-  // 컴포넌트 언마운트 시 마커 정리
+  // 컴포넌트 언마운트 시 마커 및 Circle 정리
   useEffect(() => {
     return () => {
       if (markerRef.current) {
         markerRef.current.map = null;
         markerRef.current = null;
+      }
+      if (circleRef.current) {
+        circleRef.current.setMap(null);
+        circleRef.current = null;
       }
     };
   }, []);
@@ -403,19 +434,7 @@ export default function TripPlanPage({ session, token, handleLogout }) {
                       mapId: "DEMO_MAP_ID",
                     }}
                   >
-                    {currentDay.location && (
-                      <Circle
-                        center={currentDay.location}
-                        radius={currentDay.radius}
-                        options={{
-                          strokeColor: "#818cf8",
-                          strokeOpacity: 0.8,
-                          strokeWeight: 2,
-                          fillColor: "#c7d2fe",
-                          fillOpacity: 0.35,
-                        }}
-                      />
-                    )}
+                    {/* Circle은 useEffect에서 직접 생성 */}
                   </GoogleMap>
                 </div>
               )}
