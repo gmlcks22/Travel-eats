@@ -180,7 +180,7 @@ export default function FinalPlanPage({ session, token, handleLogout }) {
 
         {/* 통계 카드 */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <div className="bg-white rounded-xl p-6 border-2 border-indigo-200 shadow-lg">
+          <div className="bg-white rounded-xl p-6 shadow-lg">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-gray-600 mb-1">선택한 식당</div>
@@ -192,7 +192,7 @@ export default function FinalPlanPage({ session, token, handleLogout }) {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 border-2 border-indigo-200 shadow-lg">
+          <div className="bg-white rounded-xl p-6 shadow-lg">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-gray-600 mb-1">그룹 멤버</div>
@@ -204,7 +204,7 @@ export default function FinalPlanPage({ session, token, handleLogout }) {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 border-2 border-indigo-200 shadow-lg">
+          <div className="bg-white rounded-xl p-6 shadow-lg">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-sm text-gray-600 mb-1">평균 별점</div>
@@ -218,7 +218,7 @@ export default function FinalPlanPage({ session, token, handleLogout }) {
         </div>
 
         {/* 일차별 버튼 */}
-        <div className="bg-white rounded-2xl p-6 border-2 border-indigo-200 shadow-lg mb-8">
+        <div className="bg-white rounded-2xl p-6 shadow-lg mb-8">
           <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
             <Calendar className="w-6 h-6 text-indigo-600" />
             일차 선택
@@ -294,7 +294,7 @@ export default function FinalPlanPage({ session, token, handleLogout }) {
             return (
               <div
                 key={meal.id}
-                className="bg-white rounded-2xl border-2 border-indigo-200 shadow-lg overflow-hidden"
+                className="bg-white rounded-2xl shadow-lg overflow-hidden"
               >
                 {/* 끼니 헤더 */}
                 <div className={`${meal.color} px-6 py-4`}>
@@ -314,121 +314,113 @@ export default function FinalPlanPage({ session, token, handleLogout }) {
                   {restaurants.map((restaurant, idx) => (
                     <div
                       key={`${restaurant.id}_${idx}`}
-                      className="bg-gray-50 rounded-xl p-4 border-2 border-gray-200 hover:border-indigo-400 hover:shadow-md transition-all"
+                      className="bg-white rounded-2xl overflow-hidden border-2 border-gray-200 shadow-lg transition-all transform"
                     >
                       {/* 이미지 */}
-                      <div className="relative h-32 mb-3 rounded-lg overflow-hidden">
+                      <div className="relative h-48 overflow-hidden">
                         {restaurant.images && restaurant.images[0] ? (
-                          <img
-                            src={restaurant.images[0]}
-                            alt={restaurant.name}
-                            className="w-full h-full object-cover"
-                          />
+                          <>
+                            <img
+                              src={restaurant.images[0]}
+                              alt={restaurant.name}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-transparent"></div>
+                          </>
                         ) : (
-                          <div className="w-full h-full bg-gray-300 flex items-center justify-center">
-                            <MapPin className="w-8 h-8 text-gray-500" />
+                          <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                            <MapPin className="w-16 h-16 text-gray-400" />
                           </div>
                         )}
-                        <div className="absolute top-2 right-2 bg-black/70 text-white px-2 py-1 rounded-full flex items-center gap-1">
-                          <Star className="w-3 h-3 text-yellow-400" />
-                          <span className="text-sm font-bold">
-                            {restaurant.rating || "N/A"}
-                          </span>
-                        </div>
-                        {/* 가격 표시 */}
-                        {restaurant.priceLevel !== null &&
-                          restaurant.priceLevel !== undefined && (
-                            <div className="absolute top-2 left-2 bg-black/70 text-white px-2 py-1 rounded-full flex items-center gap-1">
-                              <DollarSign className="w-3 h-3" />
-                              <span className="text-xs font-bold">
-                                {"$".repeat(restaurant.priceLevel)}
-                              </span>
-                            </div>
-                          )}
                       </div>
 
                       {/* 정보 */}
-                      <h4 className="font-bold text-gray-800 mb-2 truncate">
-                        {restaurant.name}
-                      </h4>
+                      <div className="p-4">
+                        <h3 className="text-lg font-bold text-gray-800 truncate mb-2">
+                          {restaurant.name}
+                        </h3>
 
-                      {/* 상세 정보 */}
-                      <div className="mb-3 space-y-1">
-                        <div className="flex items-center justify-between text-xs text-gray-600">
+                        {/* 별점 & 가격 정보 */}
+                        <div className="flex items-center gap-3 mb-3">
                           <div className="flex items-center gap-1">
-                            <Star className="w-3 h-3 text-yellow-500" />
-                            <span className="font-semibold">
+                            <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                            <span className="font-bold text-gray-800">
                               {restaurant.rating || "N/A"}
                             </span>
                             {restaurant.user_ratings_total && (
-                              <span>({restaurant.user_ratings_total})</span>
+                              <span className="text-xs text-gray-500">
+                                ({restaurant.user_ratings_total})
+                              </span>
                             )}
                           </div>
-                          {/* 가격 정보 */}
                           {restaurant.priceLevel !== null &&
                             restaurant.priceLevel !== undefined && (
-                              <div className="flex items-center gap-1">
-                                <DollarSign className="w-3 h-3 text-green-600" />
-                                <span className="font-bold text-green-600">
-                                  {"$".repeat(restaurant.priceLevel)}
-                                </span>
-                              </div>
+                              <>
+                                <span className="text-gray-300">•</span>
+                                <div className="flex items-center gap-1">
+                                  <DollarSign className="w-4 h-4 text-green-600" />
+                                  <span className="font-bold text-green-600 text-sm">
+                                    {"$".repeat(restaurant.priceLevel)}
+                                  </span>
+                                </div>
+                              </>
                             )}
                         </div>
-                        <p className="text-xs text-gray-600 flex items-start gap-1 line-clamp-2">
-                          <MapPin className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                          <span>
-                            {restaurant.location?.address || "주소 정보 없음"}
+
+                        <p className="text-sm text-gray-600 flex items-start gap-2 mb-3">
+                          <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                          <span className="line-clamp-2">
+                            {restaurant.location.address}
                           </span>
                         </p>
-                      </div>
 
-                      {/* 버튼들 */}
-                      <div className="space-y-2">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() =>
-                            navigate(
-                              routes.foodDetail
-                                .replace(":groupId", groupId)
-                                .replace(":restaurantId", restaurant.id)
-                            )
-                          }
-                          className="w-full text-xs"
-                        >
-                          상세보기
-                        </Button>
-
-                        <div className="grid grid-cols-2 gap-2">
+                        {/* 버튼들 */}
+                        <div className="space-y-2">
                           <Button
-                            variant="primary"
+                            variant="secondary"
                             size="sm"
                             onClick={() =>
-                              handleViewOnGoogleMaps(restaurant.id)
+                              navigate(
+                                routes.foodDetail
+                                  .replace(":groupId", groupId)
+                                  .replace(":restaurantId", restaurant.id)
+                              )
                             }
-                            className="text-xs"
+                            className="w-full"
                           >
-                            <ExternalLink className="w-3 h-3 mr-1" />
-                            지도
+                            상세보기
                           </Button>
-                          {restaurant.location?.lat &&
-                            restaurant.location?.lng && (
-                              <Button
-                                variant="secondary"
-                                size="sm"
-                                onClick={() =>
-                                  handleGetDirections(
-                                    restaurant.location.lat,
-                                    restaurant.location.lng
-                                  )
-                                }
-                                className="text-xs"
-                              >
-                                <Navigation className="w-3 h-3 mr-1" />
-                                길찾기
-                              </Button>
-                            )}
+
+                          <div className="grid grid-cols-2 gap-2">
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() =>
+                                handleViewOnGoogleMaps(restaurant.id)
+                              }
+                              className="text-xs"
+                            >
+                              <ExternalLink className="w-3 h-3 mr-1" />
+                              지도
+                            </Button>
+                            {restaurant.location?.lat &&
+                              restaurant.location?.lng && (
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleGetDirections(
+                                      restaurant.location.lat,
+                                      restaurant.location.lng
+                                    )
+                                  }
+                                  className="text-xs"
+                                >
+                                  <Navigation className="w-3 h-3 mr-1" />
+                                  길찾기
+                                </Button>
+                              )}
+                          </div>
                         </div>
                       </div>
                     </div>
