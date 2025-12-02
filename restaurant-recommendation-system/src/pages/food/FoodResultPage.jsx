@@ -551,7 +551,7 @@ export default function FoodResultPage({ session, token, handleLogout }) {
         </div>
 
         {/* 일차별 탭 */}
-        <div className="bg-white rounded-2xl p-4 border-2 border-indigo-200 shadow-lg mb-6">
+        <div className="bg-white rounded-2xl p-4 shadow-lg mb-6">
           <div className="flex space-x-2 border-b-2 border-gray-200 pb-2 mb-4 overflow-x-auto">
             {Object.keys(restaurantsByDay)
               .sort((a, b) => parseInt(a) - parseInt(b))
@@ -671,7 +671,7 @@ export default function FoodResultPage({ session, token, handleLogout }) {
 
         {/* 현재 날짜 정보 */}
         {group.tripPlan?.days?.[activeDayIndex] && (
-          <div className="bg-indigo-50 rounded-lg p-4 mb-6 border-2 border-indigo-200">
+          <div className="bg-indigo-50 rounded-xl p-4 mb-6 shadow-lg">
             <div className="flex items-center gap-2">
               <MapPin className="w-5 h-5 text-indigo-600" />
               <span className="font-semibold text-gray-800">
@@ -686,7 +686,7 @@ export default function FoodResultPage({ session, token, handleLogout }) {
         )}
 
         {/* 필터 */}
-        <div className="bg-white rounded-xl p-4 mb-6 border-2 border-indigo-200 shadow-lg">
+        <div className="bg-white rounded-xl p-4 mb-6 shadow-lg">
           <div className="space-y-4">
             {/* 별점 필터 */}
             <div>
@@ -830,7 +830,7 @@ export default function FoodResultPage({ session, token, handleLogout }) {
                   </div>
 
                   {/* 끼니 표시 */}
-                  <div className="absolute top-2 right-2 flex flex-col gap-1">
+                  {/* <div className="absolute top-2 right-2 flex flex-col gap-1">
                     {isInBreakfast && (
                       <span className="text-xs font-bold bg-orange-500 text-white px-2 py-1 rounded shadow-lg">
                         아침
@@ -846,7 +846,7 @@ export default function FoodResultPage({ session, token, handleLogout }) {
                         저녁
                       </span>
                     )}
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* 정보 */}
