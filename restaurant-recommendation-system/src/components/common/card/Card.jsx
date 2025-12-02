@@ -132,7 +132,7 @@ export function GroupCard({ group, session, onClick, onLeave, onDelete }) {
 
   return (
     <div
-      className="bg-white rounded-xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer"
+      className="bg-white rounded-xl p-5 shadow-md hover:shadow-lg hover:scale-[1.02] transition-all cursor-pointer"
       onClick={onClick}
     >
       <div className="flex justify-between items-start mb-3">
