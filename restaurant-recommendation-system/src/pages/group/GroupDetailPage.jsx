@@ -17,6 +17,16 @@ import {
   Utensils,
 } from "lucide-react";
 
+const COLOR_MAP = {
+  indigo: { bg: "bg-indigo-600", ring: "ring-indigo-500" },
+  red: { bg: "bg-red-500", ring: "ring-red-500" },
+  green: { bg: "bg-green-500", ring: "ring-green-500" },
+  blue: { bg: "bg-blue-500", ring: "ring-blue-500" },
+  yellow: { bg: "bg-yellow-500", ring: "ring-yellow-500" },
+  purple: { bg: "bg-purple-600", ring: "ring-purple-500" },
+  pink: { bg: "bg-pink-500", ring: "ring-pink-500" },
+};
+
 /**
  * 그룹 선호도 합의 계산 함수
  */
@@ -294,36 +304,40 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
                 그룹 멤버
               </h2>
               <div className="space-y-3">
-                {group.members.map((member) => (
-                  <div
-                    key={member.id}
-                    className="flex items-center justify-between p-4 bg-indigo-50 rounded-lg shadow-md"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-indigo-600 text-white rounded-full flex items-center justify-center font-bold">
-                        {member.nickname[0]}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-gray-800">
-                            {member.nickname}
-                          </p>
-                          {!member.preference && (
-                            <span className="text-xs text-orange-500 font-semibold">
-                              (선호도 미설정)
-                            </span>
-                          )}
+              {group.members.map((member) => {
+                  const color = member.avatarColor || "indigo";
+                  
+                  return (
+                    <div
+                      key={member.id}
+                      className={`flex items-center justify-between p-4 ${COLOR_MAP[color].bgLight} rounded-lg shadow-md`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 ${COLOR_MAP[color].bg} text-white rounded-full flex items-center justify-center font-bold`}>
+                          {member.nickname[0]}
                         </div>
-                        <p className="text-sm text-gray-500">@{member.id}</p>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium text-gray-800">
+                              {member.nickname}
+                            </p>
+                            {!member.preference && (
+                              <span className="text-xs text-orange-500 font-semibold">
+                                (선호도 미설정)
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-500">@{member.id}</p>
+                        </div>
                       </div>
+                      {member.id === group.creatorId && (
+                        <span className="px-2 py-1 bg-indigo-600 text-white text-xs rounded">
+                          그룹장
+                        </span>
+                      )}
                     </div>
-                    {member.id === group.creatorId && (
-                      <span className="px-2 py-1 bg-indigo-600 text-white text-xs rounded">
-                        그룹장
-                      </span>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
