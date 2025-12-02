@@ -30,7 +30,7 @@ export function Input({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         required={required}
-        className="px-4 py-2 border-2 border-indigo-200 rounded-lg focus:border-indigo-500 focus:outline-none transition-colors"
+        className="px-4 py-2 border-none bg-gray-100 shadow-sm rounded-lg focus:ring-2 focus:ring-indigo-300 focus:outline-none transition-colors"
       />
     </div>
   );

@@ -92,10 +92,13 @@ export default function MyPageEdit({
 
       <main className="container mx-auto px-6 py-16 flex items-center justify-center">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl p-8 border-2 border-indigo-200 shadow-lg">
+          <div className="bg-white rounded-2xl p-8 shadow-lg">
             <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 rounded-full mb-4">
-                <UserCog className="w-8 h-8 text-indigo-600" />
+              {/* 프로필 미리보기 */}
+              <div
+                className={`inline-flex items-center justify-center w-24 h-24 ${COLOR_MAP[avatarColor].bg} rounded-full mb-4 text-white text-4xl font-bold`}
+              >
+                {nickname[0]}
               </div>
               <h1 className="text-3xl font-bold text-gray-800">내 정보 수정</h1>
               <p className="text-gray-600 mt-2">프로필 정보를 수정하세요</p>
