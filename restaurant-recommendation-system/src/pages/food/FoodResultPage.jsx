@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import HeaderBar from "@common/bar/HeaderBar";
 import Button from "@common/button/Button";
@@ -17,6 +17,8 @@ import {
   ExternalLink,
   Navigation,
   DollarSign,
+  Map,
+  X,
 } from "lucide-react";
 
 // Google Place를 우리 Restaurant 형식으로 변환
@@ -99,11 +101,63 @@ export default function FoodResultPage({ session, token, handleLogout }) {
   const [restaurantsByDay, setRestaurantsByDay] = useState({});
   const [selectedRestaurants, setSelectedRestaurants] = useState({});
   const [activeDayIndex, setActiveDayIndex] = useState(0);
-  const [activeMealType, setActiveMealType] = useState("breakfast"); // 현재 선택 중인 끼니
+  const [activeMealType, setActiveMealType] = useState("breakfast");
   const [filterRating, setFilterRating] = useState(0);
-  const [filterPrice, setFilterPrice] = useState(0); // 0 = 전체
+  const [filterPrice, setFilterPrice] = useState(0);
+  const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+
+  // 지도 관련 ref
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
+  const markersRef = useRef([]);
+  const infoWindowsRef = useRef([]);
+  const isGoogleMapsLoadedRef = useRef(false);
 
   const selectedRestaurantsKey = `selectedRestaurants_${groupId}`;
+
+  const currentDayRestaurants = restaurantsByDay[activeDayIndex] || [];
+
+  // Google Maps API 동적 로드 함수
+  const loadGoogleMapsScript = () => {
+    return new Promise((resolve, reject) => {
+      if (window.google && window.google.maps) {
+        resolve();
+        return;
+      }
+
+      if (isGoogleMapsLoadedRef.current) {
+        const checkInterval = setInterval(() => {
+          if (window.google && window.google.maps) {
+            clearInterval(checkInterval);
+            resolve();
+          }
+        }, 100);
+        return;
+      }
+
+      isGoogleMapsLoadedRef.current = true;
+
+      const script = document.createElement("script");
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${
+        import.meta.env.VITE_GOOGLE_PLACES_API_KEY
+      }&libraries=places`;
+      script.async = true;
+      script.defer = true;
+
+      script.onload = () => {
+        console.log("✅ Google Maps API 로드 완료");
+        resolve();
+      };
+
+      script.onerror = () => {
+        console.error("❌ Google Maps API 로드 실패");
+        isGoogleMapsLoadedRef.current = false;
+        reject(new Error("Google Maps API 로드 실패"));
+      };
+
+      document.head.appendChild(script);
+    });
+  };
 
   useEffect(() => {
     if (token) {
@@ -116,13 +170,6 @@ export default function FoodResultPage({ session, token, handleLogout }) {
 
       const groupData = result.group;
 
-      console.log("🔍 그룹 데이터 확인:", {
-        hasRestaurantsByDay: !!groupData.restaurantsByDay,
-        hasRestaurants: !!groupData.restaurants,
-        tripDaysLength: groupData.tripPlan?.days?.length,
-      });
-
-      // 새로운 구조 restaurantsByDay 우선, 없으면 기존 restaurants 사용
       let restaurantsData = {};
 
       if (
@@ -130,10 +177,8 @@ export default function FoodResultPage({ session, token, handleLogout }) {
         Object.keys(groupData.restaurantsByDay).length > 0
       ) {
         restaurantsData = groupData.restaurantsByDay;
-        console.log("📍 restaurantsByDay 로드 성공");
       } else if (groupData.restaurants && groupData.restaurants.length > 0) {
         restaurantsData = { 0: groupData.restaurants };
-        console.log("📍 기존 restaurants를 0일차로 변환");
       }
 
       if (Object.keys(restaurantsData).length === 0) {
@@ -142,7 +187,6 @@ export default function FoodResultPage({ session, token, handleLogout }) {
         return;
       }
 
-      // 데이터 변환
       const adaptedRestaurantsByDay = {};
       for (const dayIdx in restaurantsData) {
         const dayRestaurants = restaurantsData[dayIdx];
@@ -156,7 +200,6 @@ export default function FoodResultPage({ session, token, handleLogout }) {
       setGroup(groupData);
       setRestaurantsByDay(adaptedRestaurantsByDay);
 
-      // localStorage에서 선택된 식당 로드
       const saved = localStorage.getItem(selectedRestaurantsKey);
       if (saved) {
         setSelectedRestaurants(JSON.parse(saved));
@@ -164,43 +207,128 @@ export default function FoodResultPage({ session, token, handleLogout }) {
     }
   }, [groupId, token, navigate, selectedRestaurantsKey]);
 
-  // 식당 선택/해제 (끼니별)
+  // 지도 초기화 useEffect
+  useEffect(() => {
+    if (isMapModalOpen && mapRef.current && currentDayRestaurants.length > 0) {
+      loadGoogleMapsScript()
+        .then(() => {
+          if (!window.google || !window.google.maps) {
+            console.error("Google Maps API가 로드되지 않았습니다.");
+            alert("Google Maps를 로드할 수 없습니다. API 키를 확인해주세요.");
+            return;
+          }
+
+          const map = new window.google.maps.Map(mapRef.current, {
+            zoom: 13,
+            center: {
+              lat: currentDayRestaurants[0]?.location?.lat || 37.5665,
+              lng: currentDayRestaurants[0]?.location?.lng || 126.978,
+            },
+          });
+
+          mapInstanceRef.current = map;
+
+          markersRef.current.forEach((marker) => marker.setMap(null));
+          infoWindowsRef.current.forEach((infoWindow) => infoWindow.close());
+          markersRef.current = [];
+          infoWindowsRef.current = [];
+
+          const bounds = new window.google.maps.LatLngBounds();
+
+          currentDayRestaurants.forEach((restaurant, idx) => {
+            if (restaurant.location?.lat && restaurant.location?.lng) {
+              const position = {
+                lat: restaurant.location.lat,
+                lng: restaurant.location.lng,
+              };
+
+              const marker = new window.google.maps.Marker({
+                position,
+                map,
+                label: {
+                  text: `${idx + 1}`,
+                  color: "white",
+                  fontWeight: "bold",
+                },
+                title: restaurant.name,
+              });
+
+              markersRef.current.push(marker);
+
+              const infoWindow = new window.google.maps.InfoWindow({
+                content: `
+                  <div style="padding: 8px; max-width: 200px;">
+                    <h3 style="font-weight: bold; margin-bottom: 4px;">${
+                      restaurant.name
+                    }</h3>
+                    <div style="display: flex; align-items: center; gap: 4px; margin-bottom: 4px;">
+                      <span>⭐ ${restaurant.rating || "N/A"}</span>
+                      ${
+                        restaurant.priceLevel
+                          ? `<span style="color: #10b981; font-weight: bold;">• ${"$".repeat(
+                              restaurant.priceLevel
+                            )}</span>`
+                          : ""
+                      }
+                    </div>
+                    <p style="font-size: 12px; color: #666;">${
+                      restaurant.location.address
+                    }</p>
+                  </div>
+                `,
+              });
+
+              infoWindowsRef.current.push(infoWindow);
+
+              marker.addListener("click", () => {
+                infoWindowsRef.current.forEach((iw) => iw.close());
+                infoWindow.open(map, marker);
+              });
+
+              bounds.extend(position);
+            }
+          });
+
+          if (currentDayRestaurants.length > 1) {
+            map.fitBounds(bounds);
+          }
+
+          console.log(
+            `✅ 총 ${markersRef.current.length}개의 마커가 추가되었습니다.`
+          );
+        })
+        .catch((error) => {
+          console.error("Google Maps API 로드 오류:", error);
+          alert(
+            "Google Maps를 로드할 수 없습니다. 인터넷 연결을 확인하거나 API 키를 확인해주세요."
+          );
+        });
+    }
+  }, [isMapModalOpen, currentDayRestaurants]);
+
   const handleSelectRestaurant = (dayIdx, mealType, restaurant) => {
-    const key = `${dayIdx}_${mealType}`; // "0_breakfast", "0_lunch", "0_dinner"
+    const key = `${dayIdx}_${mealType}`;
 
     setSelectedRestaurants((prev) => {
       const newSelected = { ...prev };
-
-      // 해당 끼니에 이미 선택된 식당 배열 가져오기 (새 배열로 복사)
       const currentMealSelections = [...(newSelected[key] || [])];
-
-      // 이미 선택된 식당인지 확인
       const existingIndex = currentMealSelections.findIndex(
         (r) => r.id === restaurant.id
       );
 
       if (existingIndex >= 0) {
-        // 선택 해제 - 불변성 유지
         const updatedSelections = currentMealSelections.filter(
           (_, idx) => idx !== existingIndex
         );
-        console.log(
-          `❌ 선택 해제: ${dayIdx}일차 ${mealType} - ${restaurant.name}`
-        );
 
-        // 배열이 비어있으면 키 삭제, 아니면 업데이트
         if (updatedSelections.length === 0) {
           delete newSelected[key];
         } else {
           newSelected[key] = updatedSelections;
         }
       } else {
-        // 선택 추가 (최대 5개)
         if (currentMealSelections.length < 5) {
           const updatedSelections = [...currentMealSelections, restaurant];
-          console.log(
-            `✅ 선택 추가: ${dayIdx}일차 ${mealType} - ${restaurant.name} (${updatedSelections.length}/5)`
-          );
           newSelected[key] = updatedSelections;
         } else {
           alert("끼니당 최대 5개까지만 선택할 수 있습니다.");
@@ -208,26 +336,139 @@ export default function FoodResultPage({ session, token, handleLogout }) {
         }
       }
 
-      // localStorage 저장
       localStorage.setItem(selectedRestaurantsKey, JSON.stringify(newSelected));
-      console.log("💾 저장된 데이터:", newSelected);
 
       return newSelected;
     });
   };
 
-  // 선택 완료
   const handleComplete = () => {
-    console.log("🎉 선택 완료 버튼 클릭");
-    console.log("💾 선택된 데이터:", selectedRestaurants);
-
-    // 선택된 항목이 하나라도 있으면 진행 가능
     if (Object.keys(selectedRestaurants).length === 0) {
       alert("최소 하나의 식당을 선택해주세요.");
       return;
     }
 
     navigate(routes.finalPlan.replace(":groupId", groupId));
+  };
+
+  // 지도에서 식당 클릭 핸들러
+  const handleRestaurantClickOnMap = (restaurantIndex) => {
+    if (mapInstanceRef.current && markersRef.current[restaurantIndex]) {
+      const marker = markersRef.current[restaurantIndex];
+      const restaurant = currentDayRestaurants[restaurantIndex];
+
+      mapInstanceRef.current.panTo(marker.getPosition());
+      mapInstanceRef.current.setZoom(16);
+
+      infoWindowsRef.current.forEach((iw) => iw.close());
+
+      // 상세한 식당 카드를 정보창으로 생성
+      const detailedInfoWindow = new window.google.maps.InfoWindow({
+        content: `
+          <div style="padding: 12px; max-width: 280px; font-family: system-ui, -apple-system, sans-serif;">
+            ${
+              restaurant.images[0]
+                ? `
+              <img 
+                src="${restaurant.images[0]}" 
+                alt="${restaurant.name}"
+                style="width: 100%; height: 150px; object-fit: cover; border-radius: 8px; margin-bottom: 12px;"
+              />
+            `
+                : `
+              <div style="width: 100%; height: 150px; background: #e5e7eb; border-radius: 8px; margin-bottom: 12px; display: flex; align-items: center; justify-content: center;">
+                <span style="color: #9ca3af;">이미지 없음</span>
+              </div>
+            `
+            }
+            
+            <h3 style="font-weight: bold; font-size: 16px; margin-bottom: 8px; color: #1f2937;">${
+              restaurant.name
+            }</h3>
+            
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+              <div style="display: flex; align-items: center; gap: 4px;">
+                <span>⭐</span>
+                <span style="font-weight: bold; color: #1f2937;">${
+                  restaurant.rating || "N/A"
+                }</span>
+                ${
+                  restaurant.user_ratings_total
+                    ? `
+                  <span style="font-size: 12px; color: #6b7280;">(${restaurant.user_ratings_total})</span>
+                `
+                    : ""
+                }
+              </div>
+              ${
+                restaurant.priceLevel
+                  ? `
+                <div style="display: flex; align-items: center; gap: 4px;">
+                  <span style="color: #10b981; font-weight: bold; font-size: 14px;">${"$".repeat(
+                    restaurant.priceLevel
+                  )}</span>
+                </div>
+              `
+                  : ""
+              }
+            </div>
+            
+            <p style="font-size: 13px; color: #6b7280; margin-bottom: 12px; display: flex; align-items: start; gap: 4px;">
+              <span>📍</span>
+              <span>${restaurant.location.address}</span>
+            </p>
+            
+            <div style="display: grid; gap: 8px;">
+              <a 
+                href="${window.location.origin}/group/${groupId}/food/${
+          restaurant.id
+        }"
+                style="display: block; text-align: center; padding: 8px 12px; background: #f3f4f6; color: #374151; text-decoration: none; border-radius: 6px; font-size: 14px; font-weight: 500; transition: background 0.2s;"
+                onmouseover="this.style.background='#e5e7eb'"
+                onmouseout="this.style.background='#f3f4f6'"
+              >
+                상세보기
+              </a>
+              
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <a 
+                  href="https://www.google.com/maps/place/?q=place_id:${
+                    restaurant.id
+                  }" 
+                  target="_blank"
+                  style="display: flex; align-items: center; justify-content: center; gap: 4px; padding: 8px 12px; background: #4f46e5; color: white; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 500; transition: background 0.2s;"
+                  onmouseover="this.style.background='#4338ca'"
+                  onmouseout="this.style.background='#4f46e5'"
+                >
+                  
+                  <span>지도</span>
+                </a>
+                
+                ${
+                  restaurant.location?.lat && restaurant.location?.lng
+                    ? `
+                  <a 
+                    href="https://www.google.com/maps/dir/?api=1&destination=${restaurant.location.lat},${restaurant.location.lng}" 
+                    target="_blank"
+                    style="display: flex; align-items: center; justify-content: center; gap: 4px; padding: 8px 12px; background: #f3f4f6; color: #374151; text-decoration: none; border-radius: 6px; font-size: 13px; font-weight: 500; transition: background 0.2s;"
+                    onmouseover="this.style.background='#e5e7eb'"
+                    onmouseout="this.style.background='#f3f4f6'"
+                  >
+                    
+                    <span>길찾기</span>
+                  </a>
+                `
+                    : ""
+                }
+              </div>
+            </div>
+          </div>
+        `,
+      });
+
+      detailedInfoWindow.open(mapInstanceRef.current, marker);
+      infoWindowsRef.current[restaurantIndex] = detailedInfoWindow;
+    }
   };
 
   if (!group || !session) {
@@ -238,9 +479,6 @@ export default function FoodResultPage({ session, token, handleLogout }) {
     );
   }
 
-  const currentDayRestaurants = restaurantsByDay[activeDayIndex] || [];
-
-  // 필터링 (별점 + 가격)
   let filteredRestaurants = currentDayRestaurants;
 
   if (filterRating > 0) {
@@ -255,13 +493,11 @@ export default function FoodResultPage({ session, token, handleLogout }) {
     );
   }
 
-  // 현재 끼니의 선택된 식당들
   const currentMealKey = `${activeDayIndex}_${activeMealType}`;
   const currentMealSelections = selectedRestaurants[currentMealKey] || [];
 
   const totalDays = Object.keys(restaurantsByDay).length;
 
-  // 선택된 일차 계산 (최소 1개 이상 선택된 일차만 카운트)
   const selectedDaysSet = new Set();
   Object.keys(selectedRestaurants).forEach((key) => {
     const dayIndex = key.split("_")[0];
@@ -274,7 +510,7 @@ export default function FoodResultPage({ session, token, handleLogout }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
-      <header className="sticky top-0 z-50 p-2 bg-white/80 backdrop-blur-3xl rounded-none shadow-sm">
+      <header className="p-5 bg-indigo-100 border-b-3 border-indigo-300 rounded-b-2xl shadow-sm">
         <HeaderBar session={session} handleLogout={handleLogout} />
       </header>
 
@@ -289,10 +525,21 @@ export default function FoodResultPage({ session, token, handleLogout }) {
               각 끼니별로 최대 5개까지 선택할 수 있습니다
             </p>
           </div>
-          <Button variant="primary" size="lg" onClick={handleComplete}>
-            선택 완료 ({selectedDaysCount}/{totalDays}일)
-            <ChevronRight className="w-5 h-5 ml-2" />
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              variant="secondary"
+              size="lg"
+              onClick={() => setIsMapModalOpen(true)}
+              className="flex items-center gap-2"
+            >
+              <Map className="w-5 h-5" />
+              지도에서 보기
+            </Button>
+            <Button variant="primary" size="lg" onClick={handleComplete}>
+              선택 완료 ({selectedDaysCount}/{totalDays}일)
+              <ChevronRight className="w-5 h-5 ml-2" />
+            </Button>
+          </div>
         </div>
 
         {/* 일차별 탭 */}
@@ -304,7 +551,6 @@ export default function FoodResultPage({ session, token, handleLogout }) {
                 const idx = parseInt(dayIdx);
                 const dayLabel = idx + 1;
 
-                // 해당 일차의 모든 끼니 선택 개수 확인
                 const breakfastCount = (
                   selectedRestaurants[`${idx}_breakfast`] || []
                 ).length;
@@ -320,7 +566,7 @@ export default function FoodResultPage({ session, token, handleLogout }) {
                     key={dayIdx}
                     onClick={() => {
                       setActiveDayIndex(idx);
-                      setActiveMealType("breakfast"); // 일차 변경 시 자동으로 아침으로 리셋
+                      setActiveMealType("breakfast");
                     }}
                     className={`px-6 py-3 font-bold transition-all whitespace-nowrap flex items-center gap-2 rounded-lg ${
                       activeDayIndex === idx
@@ -503,12 +749,10 @@ export default function FoodResultPage({ session, token, handleLogout }) {
         {/* 식당 목록 */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredRestaurants.map((restaurant, index) => {
-            // 현재 끼니 선택 여부
             const isSelectedInCurrentMeal = currentMealSelections.some(
               (r) => r.id === restaurant.id
             );
 
-            // 모든 끼니에서 선택 여부 확인
             const breakfastKey = `${activeDayIndex}_breakfast`;
             const lunchKey = `${activeDayIndex}_lunch`;
             const dinnerKey = `${activeDayIndex}_dinner`;
@@ -550,7 +794,6 @@ export default function FoodResultPage({ session, token, handleLogout }) {
                         alt={restaurant.name}
                         className="w-full h-full object-cover"
                       />
-                      {/* 그라데이션 오버레이 - 위쪽이 어둡고 아래가 밝음 */}
                       <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-transparent"></div>
                     </>
                   ) : (
@@ -559,7 +802,7 @@ export default function FoodResultPage({ session, token, handleLogout }) {
                     </div>
                   )}
 
-                  {/* 끼니별 선택 체크 - 왼쪽 상단 */}
+                  {/* 끼니별 선택 체크 */}
                   <div className="absolute top-2 left-2 flex gap-1">
                     {isInBreakfast && (
                       <div className="bg-orange-500 text-white rounded-full p-1.5 shadow-lg">
@@ -578,7 +821,7 @@ export default function FoodResultPage({ session, token, handleLogout }) {
                     )}
                   </div>
 
-                  {/* 끼니 표시 - 이미지 오른쪽 상단 */}
+                  {/* 끼니 표시 */}
                   <div className="absolute top-2 right-2 flex flex-col gap-1">
                     {isInBreakfast && (
                       <span className="text-xs font-bold bg-orange-500 text-white px-2 py-1 rounded shadow-lg">
@@ -600,7 +843,6 @@ export default function FoodResultPage({ session, token, handleLogout }) {
 
                 {/* 정보 */}
                 <div className="p-4">
-                  {/* 제목 */}
                   <h3 className="text-lg font-bold text-gray-800 truncate mb-2">
                     {restaurant.name}
                   </h3>
@@ -705,6 +947,80 @@ export default function FoodResultPage({ session, token, handleLogout }) {
           </div>
         )}
       </main>
+
+      {/* 지도 모달 */}
+      {isMapModalOpen && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-6xl h-[80vh] flex flex-col shadow-2xl">
+            {/* 모달 헤더 */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                  <Map className="w-6 h-6 text-indigo-600" />
+                  추천 식당 위치
+                </h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  {activeDayIndex + 1}일차 - {currentDayRestaurants.length}개
+                  식당
+                </p>
+              </div>
+              <button
+                onClick={() => setIsMapModalOpen(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <X className="w-6 h-6 text-gray-600" />
+              </button>
+            </div>
+
+            {/* 지도 컨테이너 */}
+            <div className="flex-1 relative">
+              <div
+                ref={mapRef}
+                id="restaurants-map"
+                className="w-full h-full"
+              />
+            </div>
+
+            {/* 식당 목록 (사이드바) */}
+            <div className="border-t border-gray-200 p-4 bg-gray-50 max-h-48 overflow-y-auto">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                {currentDayRestaurants.map((restaurant, idx) => (
+                  <button
+                    key={restaurant.id}
+                    onClick={() => handleRestaurantClickOnMap(idx)}
+                    className="p-3 bg-white rounded-lg border border-gray-200 hover:border-indigo-400 hover:shadow-md transition-all text-left"
+                  >
+                    <div className="flex items-start gap-2">
+                      <span className="flex-shrink-0 w-6 h-6 bg-indigo-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                        {idx + 1}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm text-gray-800 truncate">
+                          {restaurant.name}
+                        </p>
+                        <div className="flex items-center gap-1 mt-1">
+                          <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />
+                          <span className="text-xs text-gray-600">
+                            {restaurant.rating || "N/A"}
+                          </span>
+                          {restaurant.priceLevel && (
+                            <>
+                              <span className="text-xs text-gray-400">•</span>
+                              <span className="text-xs text-green-600 font-bold">
+                                {"$".repeat(restaurant.priceLevel)}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

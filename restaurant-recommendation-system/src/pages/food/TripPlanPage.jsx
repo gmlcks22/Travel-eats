@@ -28,7 +28,7 @@ const defaultCenter = {
   lng: 126.978,
 };
 
-const libraries = ["places", "marker"]; // marker 라이브러리 추가
+const libraries = ["places", "marker"];
 
 /**
  * 여행 계획 페이지 (지도 기반)
@@ -42,10 +42,11 @@ export default function TripPlanPage({ session, token, handleLogout }) {
   const [tripDays, setTripDays] = useState([]);
   const [activeDayIndex, setActiveDayIndex] = useState(0);
   const [map, setMap] = useState(null);
-  const [marker, setMarker] = useState(null);
   const [autocomplete, setAutocomplete] = useState(null);
   const [searchValue, setSearchValue] = useState("");
 
+  // useRef로 마커 관리 (상태가 아닌 참조로)
+  const markerRef = useRef(null);
 
   const { isLoaded, loadError } = useJsApiLoader({
     googleMapsApiKey: API_KEY || "",
@@ -75,14 +76,15 @@ export default function TripPlanPage({ session, token, handleLogout }) {
     }
   }, [groupId, token, navigate]);
 
-  // 마커 업데이트 (AdvancedMarkerElement 사용)
+  // 마커 업데이트 (AdvancedMarkerElement 사용) - 수정된 버전
   useEffect(() => {
     if (map && isLoaded && window.google?.maps?.marker?.AdvancedMarkerElement) {
       const currentDay = tripDays[activeDayIndex];
 
       // 기존 마커 제거
-      if (marker) {
-        marker.map = null;
+      if (markerRef.current) {
+        markerRef.current.map = null;
+        markerRef.current = null;
       }
 
       // 새 마커 생성
@@ -92,21 +94,13 @@ export default function TripPlanPage({ session, token, handleLogout }) {
           position: currentDay.location,
           title: `${activeDayIndex + 1}일차`,
         });
-        setMarker(newMarker);
+        markerRef.current = newMarker;
 
         // 지도 중심을 마커 위치로 이동 (부드럽게)
         map.panTo(currentDay.location);
-      } else {
-        setMarker(null);
       }
     }
-  }, [
-    map,
-    isLoaded,
-    activeDayIndex,
-    tripDays[activeDayIndex]?.location,
-    tripDays[activeDayIndex]?.radius,
-  ]);
+  }, [map, isLoaded, activeDayIndex, tripDays]);
 
   // 날짜 수 변경 시
   const handleNumDaysChange = (newNumDays) => {
@@ -147,7 +141,10 @@ export default function TripPlanPage({ session, token, handleLogout }) {
 
         // 현재 활성 날짜의 위치 업데이트
         const newTripDays = [...tripDays];
-        newTripDays[activeDayIndex].location = newLocation;
+        newTripDays[activeDayIndex] = {
+          ...newTripDays[activeDayIndex],
+          location: newLocation,
+        };
 
         // 장소 이름을 description에 자동 입력 (사용자가 수정 가능)
         if (!newTripDays[activeDayIndex].description) {
@@ -169,12 +166,14 @@ export default function TripPlanPage({ session, token, handleLogout }) {
     }
   };
 
-  // 지도 클릭 시 (기존 기능 유지)
+  // 지도 클릭 시
   const onMapClick = (e) => {
     const newLocation = { lat: e.latLng.lat(), lng: e.latLng.lng() };
     const newTripDays = [...tripDays];
-    // Create a NEW day object so currentDay's reference changes
-    newTripDays[activeDayIndex] = { ...newTripDays[activeDayIndex], location: newLocation };
+    newTripDays[activeDayIndex] = {
+      ...newTripDays[activeDayIndex],
+      location: newLocation,
+    };
     setTripDays(newTripDays);
   };
 
@@ -182,15 +181,20 @@ export default function TripPlanPage({ session, token, handleLogout }) {
   const handleRadiusChange = (newRadius) => {
     const radius = Math.max(100, parseInt(newRadius, 10));
     const newTripDays = [...tripDays];
-    // Create a NEW day object so currentDay's reference changes
-    newTripDays[activeDayIndex] = { ...newTripDays[activeDayIndex], radius: radius };
+    newTripDays[activeDayIndex] = {
+      ...newTripDays[activeDayIndex],
+      radius: radius,
+    };
     setTripDays(newTripDays);
   };
 
   // 설명 변경 시
   const handleDescriptionChange = (newDescription) => {
     const newTripDays = [...tripDays];
-    newTripDays[activeDayIndex].description = newDescription;
+    newTripDays[activeDayIndex] = {
+      ...newTripDays[activeDayIndex],
+      description: newDescription,
+    };
     setTripDays(newTripDays);
   };
 
@@ -212,9 +216,9 @@ export default function TripPlanPage({ session, token, handleLogout }) {
     const tripPlan = { days: tripDays };
     const result = updateGroup(token, groupId, {
       tripPlan,
-      restaurantsByDay: null, // 초기화
-      restaurants: null, // 초기화
-      lastRecommendation: null, // 초기화
+      restaurantsByDay: null,
+      restaurants: null,
+      lastRecommendation: null,
     });
 
     if (result.success) {
@@ -230,6 +234,16 @@ export default function TripPlanPage({ session, token, handleLogout }) {
     }
   };
 
+  // 컴포넌트 언마운트 시 마커 정리
+  useEffect(() => {
+    return () => {
+      if (markerRef.current) {
+        markerRef.current.map = null;
+        markerRef.current = null;
+      }
+    };
+  }, []);
+
   const currentDay = tripDays[activeDayIndex];
 
   if (!group || !session) return <div>로딩 중...</div>;
@@ -238,9 +252,10 @@ export default function TripPlanPage({ session, token, handleLogout }) {
   if (!API_KEY || API_KEY === "YOUR_API_KEY") {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
-              <header className="sticky top-0 z-50 p-2 bg-white/80 backdrop-blur-3xl rounded-none shadow-sm">
-                <HeaderBar session={session} handleLogout={handleLogout} />
-              </header>        <main className="container mx-auto px-4 py-8">
+        <header className="sticky top-0 z-50 p-2 bg-white/80 backdrop-blur-3xl rounded-none shadow-sm">
+          <HeaderBar session={session} handleLogout={handleLogout} />
+        </header>
+        <main className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto">
             <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-8 text-center">
               <h2 className="text-2xl font-bold text-red-800 mb-4">
@@ -356,7 +371,7 @@ export default function TripPlanPage({ session, token, handleLogout }) {
                       onLoad={onLoadAutocomplete}
                       onPlaceChanged={onPlaceChanged}
                       options={{
-                        types: ["(cities)"], // 도시만 검색
+                        types: ["(cities)"],
                         fields: ["geometry", "formatted_address", "name"],
                       }}
                     >
@@ -385,7 +400,7 @@ export default function TripPlanPage({ session, token, handleLogout }) {
                     onClick={onMapClick}
                     onLoad={(map) => setMap(map)}
                     options={{
-                      mapId: "DEMO_MAP_ID", // AdvancedMarkerElement 사용을 위해 필요
+                      mapId: "DEMO_MAP_ID",
                     }}
                   >
                     {currentDay.location && (

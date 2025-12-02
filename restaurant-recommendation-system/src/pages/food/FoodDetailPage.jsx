@@ -74,6 +74,11 @@ export default function FoodDetailPage({ session, token, handleLogout }) {
   const [detailsLoading, setDetailsLoading] = useState(true);
   const [group, setGroup] = useState(null);
 
+  // 뒤로가기 핸들러
+  const handleGoBack = () => {
+    navigate(-1); // 브라우저 히스토리 뒤로가기
+  };
+
   useEffect(() => {
     if (token) {
       const result = getGroupById(token, groupId);
@@ -169,21 +174,15 @@ export default function FoodDetailPage({ session, token, handleLogout }) {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
-      <header className="sticky top-0 z-50 p-2 bg-white/80 backdrop-blur-3xl rounded-none shadow-sm">
+      <header className="p-5 bg-indigo-100 border-b-3 border-indigo-300 rounded-b-2xl shadow-sm">
         <HeaderBar session={session} handleLogout={handleLogout} />
       </header>
 
       <main className="container mx-auto px-6 py-8">
         {/* 뒤로가기 버튼 */}
-        <Button
-          variant="secondary"
-          onClick={() =>
-            navigate(routes.foodResult.replace(":groupId", groupId))
-          }
-          className="mb-6"
-        >
+        <Button variant="secondary" onClick={handleGoBack} className="mb-6">
           <ArrowLeft className="w-4 h-4 mr-2" />
-          식당 목록으로
+          뒤로가기
         </Button>
 
         <div className="max-w-4xl mx-auto space-y-6">
@@ -344,14 +343,8 @@ export default function FoodDetailPage({ session, token, handleLogout }) {
 
           {/* 하단 버튼 */}
           <div className="mt-8 flex justify-center gap-4">
-            <Button
-              variant="secondary"
-              size="lg"
-              onClick={() =>
-                navigate(routes.foodResult.replace(":groupId", groupId))
-              }
-            >
-              목록으로 돌아가기
+            <Button variant="secondary" size="lg" onClick={handleGoBack}>
+              뒤로가기
             </Button>
           </div>
         </div>

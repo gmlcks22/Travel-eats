@@ -21,22 +21,26 @@ export default function MainPage({ session, handleLogout }) {
     {
       icon: <Users className="w-8 h-8 text-indigo-600" />,
       title: "그룹 여행 계획",
-      description: "친구들과 함께 여행 그룹을 만들고 모두의 선호도를 반영한 식당을 찾아보세요.",
+      description:
+        "친구들과 함께 여행 그룹을 만들고 모두의 선호도를 반영한 식당을 찾아보세요.",
     },
     {
       icon: <Sparkles className="w-8 h-8 text-purple-600" />,
       title: "AI 기반 추천",
-      description: "각 멤버의 음식 선호도를 분석하여 모두가 만족할 수 있는 식당을 추천합니다.",
+      description:
+        "각 멤버의 음식 선호도를 분석하여 모두가 만족할 수 있는 식당을 추천합니다.",
     },
     {
       icon: <MapPin className="w-8 h-8 text-green-600" />,
       title: "지역 기반 검색",
-      description: "여행지와 일정에 맞춰 주변 식당을 찾고 합리적인 선택을 할 수 있습니다.",
+      description:
+        "여행지와 일정에 맞춰 주변 식당을 찾고 합리적인 선택을 할 수 있습니다.",
     },
     {
       icon: <TrendingUp className="w-8 h-8 text-orange-600" />,
       title: "합의 점수 시스템",
-      description: "그룹 멤버들의 선호도를 종합하여 가장 적합한 식당을 순위로 보여줍니다.",
+      description:
+        "그룹 멤버들의 선호도를 종합하여 가장 적합한 식당을 순위로 보여줍니다.",
     },
   ];
 
@@ -60,20 +64,30 @@ export default function MainPage({ session, handleLogout }) {
 
           {/* 로그인 여부에 따른 버튼 */}
           {session ? (
-            <div className="flex items-center justify-center gap-4">
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex items-center justify-center gap-4">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={() => navigate(routes.groupCreate)}
+                >
+                  새 그룹 만들기
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="lg"
+                  onClick={() => navigate(routes.groupJoin)}
+                >
+                  그룹 참여하기
+                </Button>
+              </div>
               <Button
-                variant="primary"
-                size="lg"
-                onClick={() => navigate(routes.groupCreate)}
+                variant="outline"
+                size="md"
+                onClick={() => navigate(routes.myGroups)}
+                className="flex items-center gap-2"
               >
-                새 그룹 만들기
-              </Button>
-              <Button
-                variant="secondary"
-                size="lg"
-                onClick={() => navigate(routes.groupJoin)}
-              >
-                그룹 참여하기
+                <Users className="w-5 h-5" />내 그룹 보기
               </Button>
             </div>
           ) : (
@@ -131,7 +145,8 @@ export default function MainPage({ session, handleLogout }) {
                 회원가입 및 그룹 생성
               </h3>
               <p className="text-gray-600">
-                계정을 만들고 여행 그룹을 생성하세요. 친구들을 초대할 수 있는 코드가 발급됩니다.
+                계정을 만들고 여행 그룹을 생성하세요. 친구들을 초대할 수 있는
+                코드가 발급됩니다.
               </p>
             </div>
             <div className="text-center">
@@ -142,7 +157,8 @@ export default function MainPage({ session, handleLogout }) {
                 음식 선호도 입력
               </h3>
               <p className="text-gray-600">
-                각 멤버가 좋아하는 음식, 싫어하는 음식, 못 먹는 음식을 입력합니다.
+                각 멤버가 좋아하는 음식, 싫어하는 음식, 못 먹는 음식을
+                입력합니다.
               </p>
             </div>
             <div className="text-center">
@@ -153,7 +169,8 @@ export default function MainPage({ session, handleLogout }) {
                 맞춤 식당 추천 받기
               </h3>
               <p className="text-gray-600">
-                AI가 분석한 결과를 바탕으로 모두가 만족할 식당 목록을 확인하세요.
+                AI가 분석한 결과를 바탕으로 모두가 만족할 식당 목록을
+                확인하세요.
               </p>
             </div>
           </div>
