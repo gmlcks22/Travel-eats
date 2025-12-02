@@ -6,17 +6,13 @@ import { CheckboxGroup, RangeInput } from "@components/common/Input";
 import { useToast } from "@components/common/Toast";
 import routes from "@utils/constants/routes";
 import { getGroupById, updateUser } from "@utils/helpers/storage";
-import {
-  FOOD_CATEGORIES,
-  FOOD_KEYWORDS,
-} from "@utils/helpers/foodRecommendation";
+import { FOOD_CATEGORIES } from "@utils/helpers/foodRecommendation";
 import { Heart, ThumbsDown, SkipForward } from "lucide-react";
 
 /**
  * 음식 선호도 입력 페이지
  * - 온보딩(groupId 없음)과 그룹 내(groupId 있음) 두 가지 케이스를 모두 처리
  * - 좋아하는 음식 종류와 선호하지 않는 음식 종류는 상호 배타적
- * - 선호하는 맛/재료와 피하고 싶은 맛/재료는 상호 배타적
  */
 export default function FoodPreferencePage({
   session,
@@ -25,18 +21,16 @@ export default function FoodPreferencePage({
   refreshSession,
 }) {
   const navigate = useNavigate();
-  const { groupId } = useParams(); // groupId가 URL에 있으면 그룹 컨텍스트, 없으면 온보딩
+  const { groupId } = useParams();
   const location = useLocation();
   const toast = useToast();
 
   const [group, setGroup] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 선호도 state
+  // 선호도 state (맛/재료 관련 제거)
   const [likedCategories, setLikedCategories] = useState([]);
   const [dislikedCategories, setDislikedCategories] = useState([]);
-  const [dislikedKeywords, setDislikedKeywords] = useState([]);
-  const [likedKeywords, setLikedKeywords] = useState([]);
 
   // 그룹 정보(선택적) 및 기존 선호도 로드
   useEffect(() => {
@@ -58,8 +52,6 @@ export default function FoodPreferencePage({
         const pref = session.user.preference;
         setLikedCategories(pref.likedCategories || []);
         setDislikedCategories(pref.dislikedCategories || []);
-        setDislikedKeywords(pref.dislikedKeywords || []);
-        setLikedKeywords(pref.likedKeywords || []);
       }
       setIsLoading(false);
     }
@@ -83,24 +75,6 @@ export default function FoodPreferencePage({
     );
   };
 
-  // 선호하는 키워드 변경 핸들러 (피하고 싶은 키워드에서 제거)
-  const handleLikedKeywordsChange = (newLikedKeywords) => {
-    setLikedKeywords(newLikedKeywords);
-    // 선호하는 키워드에 추가된 항목을 피하고 싶은 키워드에서 제거
-    setDislikedKeywords((prev) =>
-      prev.filter((kw) => !newLikedKeywords.includes(kw))
-    );
-  };
-
-  // 피하고 싶은 키워드 변경 핸들러 (선호하는 키워드에서 제거)
-  const handleDislikedKeywordsChange = (newDislikedKeywords) => {
-    setDislikedKeywords(newDislikedKeywords);
-    // 피하고 싶은 키워드에 추가된 항목을 선호하는 키워드에서 제거
-    setLikedKeywords((prev) =>
-      prev.filter((kw) => !newDislikedKeywords.includes(kw))
-    );
-  };
-
   // 선호도 저장
   const handleSavePreference = (e) => {
     e.preventDefault();
@@ -108,8 +82,6 @@ export default function FoodPreferencePage({
     const preference = {
       likedCategories,
       dislikedCategories,
-      dislikedKeywords,
-      likedKeywords,
       updatedAt: new Date().toISOString(),
     };
 
@@ -165,7 +137,6 @@ export default function FoodPreferencePage({
   }
 
   const categories = Object.values(FOOD_CATEGORIES);
-  const keywords = Object.values(FOOD_KEYWORDS);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
@@ -204,7 +175,7 @@ export default function FoodPreferencePage({
                   options={categories}
                   selected={likedCategories}
                   onChange={handleLikedCategoriesChange}
-                  disabled={dislikedCategories} // 선호하지 않는 카테고리는 비활성화
+                  disabled={dislikedCategories}
                 />
               </div>
 
@@ -220,33 +191,7 @@ export default function FoodPreferencePage({
                   options={categories}
                   selected={dislikedCategories}
                   onChange={handleDislikedCategoriesChange}
-                  disabled={likedCategories} // 좋아하는 카테고리는 비활성화
-                />
-              </div>
-
-              {/* 피하고 싶은 맛/재료 */}
-              <div className="p-6 bg-orange-50 rounded-lg border-2 border-orange-200">
-                <h2 className="text-xl font-bold text-gray-800 mb-4">
-                  피하고 싶은 맛/재료
-                </h2>
-                <CheckboxGroup
-                  options={keywords}
-                  selected={dislikedKeywords}
-                  onChange={handleDislikedKeywordsChange}
-                  disabled={likedKeywords} // 선호하는 키워드는 비활성화
-                />
-              </div>
-
-              {/* 선호하는 맛/재료 */}
-              <div className="p-6 bg-blue-50 rounded-lg border-2 border-blue-200">
-                <h2 className="text-xl font-bold text-gray-800 mb-4">
-                  선호하는 맛/재료
-                </h2>
-                <CheckboxGroup
-                  options={keywords}
-                  selected={likedKeywords}
-                  onChange={handleLikedKeywordsChange}
-                  disabled={dislikedKeywords} // 피하고 싶은 키워드는 비활성화
+                  disabled={likedCategories}
                 />
               </div>
 

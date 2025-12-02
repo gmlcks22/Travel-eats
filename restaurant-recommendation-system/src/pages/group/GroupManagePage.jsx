@@ -286,7 +286,7 @@ export default function GroupManagePage({ session, token, handleLogout }) {
 
           {/* 그룹 삭제 */}
           <div className="bg-red-50 rounded-2xl p-6 border-2 border-red-200 shadow-lg">
-            <h2 className="text-xl font-bold text-red-800 mb-2">위험 구역</h2>
+            <h2 className="text-xl font-bold text-red-800 mb-2">주의!</h2>
             <p className="text-gray-700 mb-4">
               이 작업은 되돌릴 수 없습니다. 신중하게 결정해주세요.
             </p>

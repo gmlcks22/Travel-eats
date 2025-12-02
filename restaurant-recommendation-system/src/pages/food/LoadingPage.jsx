@@ -237,7 +237,7 @@ export default function LoadingPage({ token }) {
         </div>
         <div className="mb-6">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            AI가 분석하는 중...
+            분석하는 중...
           </h1>
           <p className="text-lg text-gray-600">{message}</p>
         </div>
@@ -252,7 +252,7 @@ export default function LoadingPage({ token }) {
           <p className="text-sm text-gray-700">
             💡 <strong>잠깐만요!</strong>
             <br />
-            AI가 모든 멤버의 선호도를 분석하여 최적의 식당을 찾고 있습니다.
+            모든 멤버의 선호도를 분석하여 최적의 식당을 찾고 있습니다.
             <br />곧 완벽한 추천을 받을 수 있어요! 🎉
           </p>
         </div>

@@ -8,15 +8,12 @@ import { getUserGroups, leaveGroup, deleteGroup } from "@utils/helpers/storage";
 import { User, Users, Settings, Heart, LogOut } from "lucide-react";
 
 /**
- * 마이페이지
- * - 사용자 정보 표시
- * - 참여 중인 그룹 목록 (나가기/삭제 기능 포함)
+ * 마이페이지 (맛/재료 선호도 제거)
  */
 export default function MyPage({ session, token, handleLogout }) {
   const navigate = useNavigate();
   const [userGroups, setUserGroups] = useState([]);
 
-  // 그룹 목록 로드 (컴포넌트 마운트 및 그룹 변경 시 새로고침을 위해 useCallback 사용)
   const fetchGroups = useCallback(() => {
     if (token) {
       const result = getUserGroups(token);
@@ -32,7 +29,6 @@ export default function MyPage({ session, token, handleLogout }) {
     fetchGroups();
   }, [fetchGroups]);
 
-  // 그룹 상세로 이동
   const handleNavigate = (groupId) => {
     navigate(routes.groupDetail.replace(":groupId", groupId));
   };
@@ -42,7 +38,7 @@ export default function MyPage({ session, token, handleLogout }) {
       const result = leaveGroup(token, groupId);
       alert(result.message);
       if (result.success) {
-        fetchGroups(); // 목록 새로고침
+        fetchGroups();
       }
     }
   };
@@ -56,19 +52,17 @@ export default function MyPage({ session, token, handleLogout }) {
       const result = deleteGroup(token, groupId);
       alert(result.message);
       if (result.success) {
-        fetchGroups(); // 목록 새로고침
+        fetchGroups();
       }
     }
   };
 
-  // ✅ 수정: 선호도 수정은 항상 온보딩(개인) 컨텍스트로 이동
   const handleEditPreference = () => {
     navigate(routes.onboardingPreference, {
       state: { returnTo: routes.mypage },
     });
   };
 
-  // 로그아웃 확인 및 처리
   const onLogoutClick = () => {
     if (window.confirm("로그아웃 하시겠습니까?")) {
       handleLogout();
@@ -85,7 +79,6 @@ export default function MyPage({ session, token, handleLogout }) {
 
   const { user } = session;
 
-  // 아바타 색상을 Tailwind 클래스로 매핑
   const COLOR_MAP = {
     indigo: "bg-indigo-600",
     red: "bg-red-500",
@@ -175,9 +168,8 @@ export default function MyPage({ session, token, handleLogout }) {
               </div>
             </div>
 
-            {/* 오른쪽 컬럼 */}
+            {/* 오른쪽 컬럼 - 선호도 정보 (맛/재료 제거) */}
             <div className="lg:col-span-2 mt-6 lg:mt-0">
-              {/* 선호도 정보 */}
               <div className="bg-white rounded-2xl p-8 shadow-lg">
                 <div className="flex items-center justify-between mb-6">
                   <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
@@ -228,40 +220,6 @@ export default function MyPage({ session, token, handleLogout }) {
                         </div>
                       </div>
                     )}
-                    {user.preference.likedKeywords?.length > 0 && (
-                      <div className="p-4 bg-blue-50 rounded-lg shadow-md">
-                        <h3 className="font-bold text-blue-800 mb-2">
-                          선호하는 맛/재료
-                        </h3>
-                        <div className="flex flex-wrap gap-2">
-                          {user.preference.likedKeywords.map((kw) => (
-                            <span
-                              key={kw}
-                              className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm"
-                            >
-                              {kw}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {user.preference.dislikedKeywords?.length > 0 && (
-                      <div className="p-4 bg-orange-50 rounded-lg shadow-md">
-                        <h3 className="font-bold text-orange-800 mb-2">
-                          피하고 싶은 맛/재료
-                        </h3>
-                        <div className="flex flex-wrap gap-2">
-                          {user.preference.dislikedKeywords.map((kw) => (
-                            <span
-                              key={kw}
-                              className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm"
-                            >
-                              {kw}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <div className="text-center py-8">
@@ -281,7 +239,7 @@ export default function MyPage({ session, token, handleLogout }) {
             </div>
           </div>
 
-          {/* 전체 너비 섹션 */}
+          {/* 전체 너비 섹션 - 참여 중인 그룹 */}
           <div className="bg-indigo-50 rounded-2xl p-8 shadow-lg">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
@@ -298,9 +256,7 @@ export default function MyPage({ session, token, handleLogout }) {
             </div>
             {userGroups.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-600 mb-4">
-                  참여 중인 그룹이 없습니다.
-                </p>
+                <p className="text-gray-600 mb-4">참여 중인 그룹이 없습니다.</p>
                 <div className="flex justify-center gap-3">
                   <Button
                     variant="primary"

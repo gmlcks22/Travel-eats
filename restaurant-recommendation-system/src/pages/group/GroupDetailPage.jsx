@@ -18,23 +18,33 @@ import {
 } from "lucide-react";
 
 const COLOR_MAP = {
-  indigo: { bg: "bg-indigo-600", ring: "ring-indigo-500" },
-  red: { bg: "bg-red-500", ring: "ring-red-500" },
-  green: { bg: "bg-green-500", ring: "ring-green-500" },
-  blue: { bg: "bg-blue-500", ring: "ring-blue-500" },
-  yellow: { bg: "bg-yellow-500", ring: "ring-yellow-500" },
-  purple: { bg: "bg-purple-600", ring: "ring-purple-500" },
-  pink: { bg: "bg-pink-500", ring: "ring-pink-500" },
+  indigo: {
+    bg: "bg-indigo-600",
+    ring: "ring-indigo-500",
+    bgLight: "bg-indigo-50",
+  },
+  red: { bg: "bg-red-500", ring: "ring-red-500", bgLight: "bg-red-50" },
+  green: { bg: "bg-green-500", ring: "ring-green-500", bgLight: "bg-green-50" },
+  blue: { bg: "bg-blue-500", ring: "ring-blue-500", bgLight: "bg-blue-50" },
+  yellow: {
+    bg: "bg-yellow-500",
+    ring: "ring-yellow-500",
+    bgLight: "bg-yellow-50",
+  },
+  purple: {
+    bg: "bg-purple-600",
+    ring: "ring-purple-500",
+    bgLight: "bg-purple-50",
+  },
+  pink: { bg: "bg-pink-500", ring: "ring-pink-500", bgLight: "bg-pink-50" },
 };
 
 /**
- * 그룹 선호도 합의 계산 함수
+ * 그룹 선호도 합의 계산 함수 (맛/재료 제거)
  */
 const calculateGroupConsensus = (members) => {
   const allLikedCategories = [];
   const allDislikedCategories = [];
-  const allLikedKeywords = [];
-  const allDislikedKeywords = [];
 
   members.forEach((member) => {
     if (member.preference) {
@@ -44,12 +54,6 @@ const calculateGroupConsensus = (members) => {
       if (member.preference.dislikedCategories) {
         allDislikedCategories.push(...member.preference.dislikedCategories);
       }
-      if (member.preference.likedKeywords) {
-        allLikedKeywords.push(...member.preference.likedKeywords);
-      }
-      if (member.preference.dislikedKeywords) {
-        allDislikedKeywords.push(...member.preference.dislikedKeywords);
-      }
     }
   });
 
@@ -58,19 +62,11 @@ const calculateGroupConsensus = (members) => {
     (cat) => !allDislikedCategories.includes(cat)
   );
 
-  const uniqueLikedKeywords = [...new Set(allLikedKeywords)];
-  const finalLikedKeywords = uniqueLikedKeywords.filter(
-    (kw) => !allDislikedKeywords.includes(kw)
-  );
-
   const finalDislikedCategories = [...new Set(allDislikedCategories)];
-  const finalDislikedKeywords = [...new Set(allDislikedKeywords)];
 
   return {
     likedCategories: finalLikedCategories,
     dislikedCategories: finalDislikedCategories,
-    likedKeywords: finalLikedKeywords,
-    dislikedKeywords: finalDislikedKeywords,
   };
 };
 
@@ -83,14 +79,6 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
 
   const [group, setGroup] = useState(null);
   const [copied, setCopied] = useState(false);
-
-  // 페이지 마운트 시 인증 상태 확인
-  useEffect(() => {
-    console.log("📄 GroupDetailPage 마운트");
-    console.log("📄 session:", !!session);
-    console.log("📄 token:", !!token);
-    console.log("📄 groupId:", groupId);
-  }, []);
 
   useEffect(() => {
     if (token) {
@@ -117,12 +105,10 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
     navigate(routes.tripPlan.replace(":groupId", groupId));
   };
 
-  // 식당 추천 결과 보기 (선택 페이지로)
   const handleViewResults = () => {
     navigate(routes.foodResult.replace(":groupId", groupId));
   };
 
-  // 최종 계획 보기
   const handleViewFinalPlan = () => {
     navigate(routes.finalPlan.replace(":groupId", groupId));
   };
@@ -139,17 +125,7 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
     (member) => !member.preference
   );
 
-  // 한 번에 모든 날짜 추천 받기
   const handleRequestRecommendation = () => {
-    console.log("🎯 식당 추천 받기 클릭");
-    console.log("🎯 token 존재:", !!token);
-    console.log("🎯 session 존재:", !!session);
-    console.log("🎯 groupId:", groupId);
-    console.log(
-      "🎯 membersWithoutPreference:",
-      membersWithoutPreference.length
-    );
-
     if (membersWithoutPreference.length > 0) {
       const memberNames = membersWithoutPreference
         .map((m) => m.nickname)
@@ -163,9 +139,7 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
     const targetPath = routes.loading
       .replace(":groupId", groupId)
       .replace(":dayIndex", "all");
-    console.log("🎯 이동할 경로:", targetPath);
 
-    // 모든 날짜를 한번에 처리하는 로딩 페이지로
     navigate(targetPath);
   };
 
@@ -174,19 +148,15 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
     group.restaurantsByDay ||
     (group.restaurants && group.restaurants.length > 0);
 
-  // 선택된 식당 개수 확인
   const selectedRestaurantsKey = `selectedRestaurants_${groupId}`;
   const selectedRestaurants = JSON.parse(
     localStorage.getItem(selectedRestaurantsKey) || "{}"
   );
 
-  // 실제 여행 일수 계산
   const totalTripDays = group.tripPlan?.days?.length || 0;
 
-  // 선택된 일차 계산 (최소 1개 이상 선택된 일차만 카운트)
   const selectedDaysSet = new Set();
   Object.keys(selectedRestaurants).forEach((key) => {
-    // key 형식: "0_breakfast", "1_lunch" 등
     const dayIndex = key.split("_")[0];
     const restaurants = selectedRestaurants[key];
     if (Array.isArray(restaurants) && restaurants.length > 0) {
@@ -195,7 +165,6 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
   });
   const selectedDaysCount = selectedDaysSet.size;
 
-  // 모든 날짜가 선택되었는지 확인
   const allDaysSelected =
     totalTripDays > 0 && selectedDaysCount === totalTripDays;
 
@@ -304,16 +273,18 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
                 그룹 멤버
               </h2>
               <div className="space-y-3">
-              {group.members.map((member) => {
+                {group.members.map((member) => {
                   const color = member.avatarColor || "indigo";
-                  
+
                   return (
                     <div
                       key={member.id}
                       className={`flex items-center justify-between p-4 ${COLOR_MAP[color].bgLight} rounded-lg shadow-md`}
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 ${COLOR_MAP[color].bg} text-white rounded-full flex items-center justify-center font-bold`}>
+                        <div
+                          className={`w-10 h-10 ${COLOR_MAP[color].bg} text-white rounded-full flex items-center justify-center font-bold`}
+                        >
                           {member.nickname[0]}
                         </div>
                         <div>
@@ -341,9 +312,9 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
               </div>
             </div>
 
-            {/* 그룹 선호도 합의 */}
+            {/* 그룹 선호도 합의 (맛/재료 제거) */}
             {membersWithoutPreference.length === 0 && (
-              <div className="bg-white rounded-2xl p-6 -2 shadow-lg">
+              <div className="bg-white rounded-2xl p-6 shadow-lg">
                 <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                   <Heart className="w-6 h-6 text-indigo-600" />
                   그룹 선호도 합의
@@ -372,28 +343,6 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
                     </div>
                   )}
 
-                  {groupConsensus.likedKeywords.length > 0 && (
-                    <div className="p-4 bg-blue-50 rounded-lg shadow-md">
-                      <h3 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
-                        <Heart className="w-5 h-5" />
-                        선호하는 맛/재료
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {groupConsensus.likedKeywords.map((kw) => (
-                          <span
-                            key={kw}
-                            className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
-                          >
-                            {kw}
-                          </span>
-                        ))}
-                      </div>
-                      <p className="text-xs text-blue-600 mt-2">
-                        ✅ 그룹이 선호하는 맛 (피하고 싶은 멤버가 있으면 제외됨)
-                      </p>
-                    </div>
-                  )}
-
                   {groupConsensus.dislikedCategories.length > 0 && (
                     <div className="p-4 bg-yellow-50 rounded-lg shadow-md">
                       <h3 className="font-bold text-yellow-800 mb-2 flex items-center gap-2">
@@ -412,28 +361,6 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
                       </div>
                       <p className="text-xs text-yellow-600 mt-2">
                         ⚠️ 한 명이라도 선호하지 않으면 추천에서 제외됩니다
-                      </p>
-                    </div>
-                  )}
-
-                  {groupConsensus.dislikedKeywords.length > 0 && (
-                    <div className="p-4 bg-orange-50 rounded-lg shadow-md">
-                      <h3 className="font-bold text-orange-800 mb-2 flex items-center gap-2">
-                        <ThumbsDown className="w-5 h-5" />
-                        피하고 싶은 맛/재료
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {groupConsensus.dislikedKeywords.map((kw) => (
-                          <span
-                            key={kw}
-                            className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-medium"
-                          >
-                            {kw}
-                          </span>
-                        ))}
-                      </div>
-                      <p className="text-xs text-orange-600 mt-2">
-                        ⚠️ 한 명이라도 피하고 싶으면 추천에서 제외됩니다
                       </p>
                     </div>
                   )}
@@ -480,7 +407,6 @@ export default function GroupDetailPage({ session, token, handleLogout }) {
                           식당 선택하기
                         </Button>
 
-                        {/* 선택된 식당이 있으면 최종 계획 보기 버튼 표시 */}
                         {selectedDaysCount > 0 && (
                           <Button
                             variant="secondary"

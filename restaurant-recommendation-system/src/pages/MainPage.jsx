@@ -26,7 +26,7 @@ export default function MainPage({ session, handleLogout }) {
     },
     {
       icon: <Sparkles className="w-8 h-8 text-purple-600" />,
-      title: "AI 기반 추천",
+      title: "선호도 기반 추천",
       description:
         "각 멤버의 음식 선호도를 분석하여 모두가 만족할 수 있는 식당을 추천합니다.",
     },
@@ -169,8 +169,7 @@ export default function MainPage({ session, handleLogout }) {
                 맞춤 식당 추천 받기
               </h3>
               <p className="text-gray-600">
-                AI가 분석한 결과를 바탕으로 모두가 만족할 식당 목록을
-                확인하세요.
+                분석한 결과를 바탕으로 모두가 만족할 식당 목록을 확인하세요.
               </p>
             </div>
           </div>
